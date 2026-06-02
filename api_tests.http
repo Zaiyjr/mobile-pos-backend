@@ -1,0 +1,297 @@
+### Mobile POS API Test Suite (REST Client / HTTP File)
+### 💡 ວິທີໃຊ້: ຕິດຕັ້ງສ່ວນເສີມ "REST Client" ໃນ VS Code ແລ້ວກົດ "Send Request" ຢູ່ເທິງຫົວແຕ່ລະ API ໄດ້ເລີຍ!
+
+@baseUrl = http://localhost:5000/api
+
+### ປ່ຽນຄ່າ Token ດ້ານລຸ່ມນີ້ຫຼັງຈາກທີ່ Login ສຳເລັດແລ້ວ
+@authToken = {{loginAdmin.response.body.data.token}}
+
+# ==============================================================================
+# 1. ລະບົບ Authentication & Users
+# ==============================================================================
+
+### 🔑 1.1 ສະໝັກບັນຊີພະນັກງານ (Register)
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "cashier_noi",
+  "password": "securepassword999",
+  "name": "ນາງ ນ້ອຍ ຄຳມີ",
+  "roleId": 3
+}
+
+### 🔑 1.2 ເຂົ້າສູ່ລະບົບ (Login ບັນຊີ Admin)
+# @name loginAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+### 🔑 1.3 ເຂົ້າສູ່ລະບົບ (Login ບັນຊີພະນັກງານທີ່ຫາກໍສະໝັກ)
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "cashier_noi",
+  "password": "securepassword999"
+}
+
+### 👥 1.4 ດຶງຂໍ້ມູນພະນັກງານທັງໝົດ (🔒 Admin Only)
+GET {{baseUrl}}/users
+Authorization: Bearer {{authToken}}
+
+### 👥 1.5 ດຶງຂໍ້ມູນພະນັກງານດ້ວຍ ID (🔒 Admin Only)
+GET {{baseUrl}}/users/1
+Authorization: Bearer {{authToken}}
+
+### 👥 1.6 ແກ້ໄຂຂໍ້ມູນພະນັກງານ (🔒 Admin Only)
+PUT {{baseUrl}}/users/2
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "ນາງ ນ້ອຍ ຄຳມີ (ແກ້ໄຂແລ້ວ)",
+  "roleId": 2
+}
+
+### 👥 1.7 ລຶບພະນັກງານ (🔒 Admin Only)
+DELETE {{baseUrl}}/users/2
+Authorization: Bearer {{authToken}}
+
+
+# ==============================================================================
+# 2. ລະບົບຈັດການ Roles
+# ==============================================================================
+
+### 🏷️ 2.1 ສ້າງ Role ໃໝ່ (🔒 Admin Only)
+POST {{baseUrl}}/roles
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "MANAGER"
+}
+
+### 🏷️ 2.2 ດຶງຂໍ້ມູນ Roles ທັງໝົດ (🔒 Auth Required)
+GET {{baseUrl}}/roles
+Authorization: Bearer {{authToken}}
+
+### 🏷️ 2.3 ດຶງຂໍ້ມູນ Role ດ້ວຍ ID (🔒 Auth Required)
+GET {{baseUrl}}/roles/1
+Authorization: Bearer {{authToken}}
+
+### 🏷️ 2.4 ແກ້ໄຂ Role (🔒 Admin Only)
+PUT {{baseUrl}}/roles/4
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "SUPERVISOR"
+}
+
+### 🏷️ 2.5 ລຶບ Role (🔒 Admin Only)
+DELETE {{baseUrl}}/roles/4
+Authorization: Bearer {{authToken}}
+
+
+# ==============================================================================
+# 3. ລະບົບໝວດໝູ່ (Categories) & ຍີ່ຫໍ້ (Brands)
+# ==============================================================================
+
+### 🗂️ 3.1 ສ້າງໝວດໝູ່ໃໝ່ (🔒 Admin Only)
+POST {{baseUrl}}/categories
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "Tablet"
+}
+
+### 🗂️ 3.2 ດຶງໝວດໝູ່ທັງໝົດ (Public)
+GET {{baseUrl}}/categories
+
+### 🏷️ 3.3 ສ້າງຍີ່ຫໍ້ໃໝ່ (🔒 Admin Only)
+POST {{baseUrl}}/brands
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "Apple"
+}
+
+### 🏷️ 3.4 ດຶງຍີ່ຫໍ້ທັງໝົດ (Public)
+GET {{baseUrl}}/brands
+
+### 🏷️ 3.5 ດຶງຍີ່ຫໍ້ດ້ວຍ ID (Public)
+GET {{baseUrl}}/brands/1
+
+### 🏷️ 3.6 ແກ້ໄຂຍີ່ຫໍ້ (🔒 Admin Only)
+PUT {{baseUrl}}/brands/1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "Apple Inc."
+}
+
+### 🏷️ 3.7 ລຶບຍີ່ຫໍ້ (🔒 Admin Only)
+DELETE {{baseUrl}}/brands/1
+Authorization: Bearer {{authToken}}
+
+
+# ==============================================================================
+# 4. ລະບົບສິນຄ້າ (Products)
+# ==============================================================================
+
+### 📦 4.1 ສ້າງສິນຄ້າໃໝ່ພ້ອມຮູບພາບ ແລະ ລາຄາ/ສະຕັອກ (Nested Create - 🔒 Admin Only)
+POST {{baseUrl}}/products
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "iPhone 15 Pro Max",
+  "description": "5G, Camera 48MP, Apple A17 Pro Chip",
+  "categoryId": 1,
+  "brandId": 1,
+  "images": {
+    "create": [
+      {
+        "imageUrl": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=600",
+        "isMain": true
+      }
+    ]
+  },
+  "variants": {
+    "create": [
+      {
+        "color": "Titanium Black",
+        "sku": "IPH15PM-BLK",
+        "price": 45000000.00,
+        "stockQuantity": 10
+      }
+    ]
+  }
+}
+
+### 📦 4.2 ດຶງສິນຄ້າທັງໝົດ (Public)
+GET {{baseUrl}}/products
+
+### 📦 4.3 ດຶງສິນຄ້າດ້ວຍ ID (Public)
+GET {{baseUrl}}/products/1
+
+### 📦 4.4 ແກ້ໄຂສິນຄ້າ (🔒 Admin Only)
+PUT {{baseUrl}}/products/1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "iPhone 15 Pro Max (Updated)",
+  "description": "Titanium Body, A17 Pro Chip"
+}
+
+### 📦 4.5 ລຶບສິນຄ້າ (🔒 Admin Only)
+DELETE {{baseUrl}}/products/1
+Authorization: Bearer {{authToken}}
+
+
+# ==============================================================================
+# 5. ລະບົບສະຕັອກ & ຮັບເຄື່ອງເຂົ້າຄັງ (Stocks & IMEI)
+# ==============================================================================
+
+### 📥 5.1 ເພີ່ມເລກ IMEI / Serial Number ເຂົ້າສະຕັອກ (🔒 Admin Only)
+POST {{baseUrl}}/stocks/add
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "variantId": 1,
+  "serialNumber": "352617283948571"
+}
+
+### 🔍 5.2 ຍິງບາໂຄ້ດເຊັກ IMEI / S/N (🔒 Auth Required)
+GET {{baseUrl}}/stocks/check/352617283948571
+Authorization: Bearer {{authToken}}
+
+### ✏️ 5.3 ປັບປຸງສະຖານະ IMEI ດ້ວຍຕົນເອງ (🔒 Admin Only)
+PUT {{baseUrl}}/stocks/status/1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "CLAIM"
+}
+
+
+# ==============================================================================
+# 6. ລະບົບລູກຄ້າສະມາຊິກ (Customers)
+# ==============================================================================
+
+### 👥 6.1 ລົງທະບຽນລູກຄ້າໃໝ່ (🔒 Auth Required)
+POST {{baseUrl}}/customers
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "name": "ທ້າວ ສົມຊາຍ ໃຈດີ",
+  "phone": "02055555555"
+}
+
+### 👥 6.2 ດຶງຂໍ້ມູນລູກຄ້າທັງໝົດ (🔒 Auth Required)
+GET {{baseUrl}}/customers
+Authorization: Bearer {{authToken}}
+
+### 👥 6.3 ຄົ້ນຫາລູກຄ້າດ້ວຍເບີໂທ (🔒 Auth Required)
+GET {{baseUrl}}/customers/phone/02055555555
+Authorization: Bearer {{authToken}}
+
+### 🏆 6.4 ປັບປຸງ/ເພີ່ມຄະແນນລູກຄ້າ (🔒 Admin Only)
+PUT {{baseUrl}}/customers/points/1
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "points": 100
+}
+
+### 🗑️ 6.5 ລຶບຂໍ້ມູນລູກຄ້າ (🔒 Admin Only)
+DELETE {{baseUrl}}/customers/1
+Authorization: Bearer {{authToken}}
+
+
+# ==============================================================================
+# 7. ລະບົບປິດບິນຂາຍໜ້າ POS (Orders)
+# ==============================================================================
+
+### 🛒 7.1 ປິດບິນຂາຍ (POS Checkout) (🔒 Auth Required)
+POST {{baseUrl}}/orders
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "customerId": 1,
+  "totalAmount": 45000000.00,
+  "items": [
+    {
+      "variantId": 1,
+      "quantity": 1,
+      "priceAtTime": 45000000.00,
+      "stockItemIds": [1]
+    }
+  ]
+}
+
+### 🧾 7.2 ດຶງປະຫວັດບິນຂາຍທັງໝົດ (🔒 Auth Required)
+GET {{baseUrl}}/orders
+Authorization: Bearer {{authToken}}
+
+### 🧾 7.3 ດຶງປະຫວັດບິນຂາຍດ້ວຍ ID (🔒 Auth Required)
+GET {{baseUrl}}/orders/1
+Authorization: Bearer {{authToken}}
+
+### ❌ 7.4 ຍົກເລີກບິນຂາຍ (🔒 Admin & Cashier Only)
+POST {{baseUrl}}/orders/cancel/1
+Authorization: Bearer {{authToken}}
