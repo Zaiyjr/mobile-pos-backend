@@ -6,13 +6,20 @@ import { errorHandler } from './middlewares/error.middleware.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://frontend-eta-jade-32.vercel.app",
+    process.env.FRONTEND_URL
+].filter(Boolean) as string[];
 
 // 1. Middlewares
 app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://mobile-pos-frontend.vercel.app" // 🔥 ປ່ຽນເປັນ URL ຂອງໜ້າບ້ານ (Frontend) ທີ່ທ່ານໄດ້ຈາກ Vercel ເດີ້
-    ],
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true
 }));
 app.use(express.json());

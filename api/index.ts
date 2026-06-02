@@ -1,16 +1,26 @@
 import 'dotenv/config';
-import { VercelRequest, VercelResponse } from '@vercel/node';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
 import cors from 'cors';
+import rootRouter from '../src/routes/index.js';
+import { errorHandler } from '../src/middlewares/error.middleware.js';
 
 const app = express();
+const allowedOrigins = [
+    "http://localhost:5173",
+    "https://mobile-pos-frontend.vercel.app",
+    "https://frontend-eta-jade-32.vercel.app",
+    process.env.FRONTEND_URL
+].filter(Boolean) as string[];
 
 // Middlewares
 app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://mobile-pos-frontend.vercel.app"
-    ],
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error("Not allowed by CORS"));
+    },
     credentials: true
 }));
 app.use(express.json());
@@ -20,6 +30,8 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/', (req, res) => {
     res.json({ message: "Welcome to Mobile POS API!", status: "ok" });
 });
+
+app.use('/api', rootRouter);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: "healthy", timestamp: new Date().toISOString() });
@@ -36,13 +48,7 @@ app.use((req, res) => {
 });
 
 // Error handler
-app.use((err: any, req: any, res: any, next: any) => {
-    console.error(err);
-    res.status(500).json({ 
-        message: "Internal Server Error", 
-        error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-    });
-});
+app.use(errorHandler);
 
 // Export as Vercel serverless function
 export default (req: VercelRequest, res: VercelResponse) => {
