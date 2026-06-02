@@ -6,23 +6,33 @@ import rootRouter from '../src/routes/index.js';
 import { errorHandler } from '../src/middlewares/error.middleware.js';
 
 const app = express();
+
+// Define allowed origins
 const allowedOrigins = [
     "http://localhost:5173",
+    "http://localhost:3000",
     "https://mobile-pos-frontend.vercel.app",
     "https://frontend-eta-jade-32.vercel.app",
-    process.env.FRONTEND_URL
-].filter(Boolean) as string[];
+].filter(Boolean);
 
-// Middlewares
+// CORS middleware with proper preflight handling
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            return callback(null, true);
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or Postman)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('CORS not allowed'));
         }
-        return callback(new Error("Not allowed by CORS"));
     },
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'JWT'],
+    optionsSuccessStatus: 200
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -31,15 +41,11 @@ app.get('/', (req, res) => {
     res.json({ message: "Welcome to Mobile POS API!", status: "ok" });
 });
 
+// API Routes - all under /api
 app.use('/api', rootRouter);
 
 app.get('/api/health', (req, res) => {
     res.json({ status: "healthy", timestamp: new Date().toISOString() });
-});
-
-// Test route
-app.get('/api/test', (req, res) => {
-    res.json({ test: "success", data: { message: "API is working!" } });
 });
 
 // 404 handler
