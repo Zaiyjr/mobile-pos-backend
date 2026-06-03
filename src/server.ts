@@ -9,13 +9,14 @@ const PORT = process.env.PORT || 5000;
 
 // 1. Middlewares
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://frontend-eta-jade-32.vercel.app",
-  ],
-   credentials: true,
-   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-   allowedHeaders: ['Content-Type', 'Authorization',  ]
+    origin: [
+        "http://localhost:5173",
+        "https://frontend-eta-jade-32.vercel.app",
+        "https://mobile-pos-frontend-hr6v.vercel.app"
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization',]
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
