@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "prisma generate && tsc && tsc --project tsconfig.api.json",
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/server.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js"
