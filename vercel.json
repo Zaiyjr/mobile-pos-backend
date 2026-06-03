@@ -1,23 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npx prisma generate && npm run build",
   "builds": [
     {
-      "src": "api/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "maxDuration": 60,
-        "runtime": "nodejs20.x"
-      }
+      "src": "src/server.ts",
+      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "api/index.ts"
+      "dest": "src/server.ts"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
