@@ -1,8 +1,8 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Mobile POS Backend — Supabase pg, clean modular",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc && tsc --project tsconfig.api.json",
     "postinstall": "echo \"no prisma — using Supabase pg\"",
