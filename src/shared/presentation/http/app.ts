@@ -33,6 +33,14 @@ export function createApp() {
     res.send("Welcome to Mobile POS API! (Clean Modular)");
   });
 
+  // Health — never touches DB, proves Vercel cold start works
+  app.get("/health", (_req, res) => {
+    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!process.env.DATABASE_URL } });
+  });
+  app.get("/api/health", (_req, res) => {
+    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!process.env.DATABASE_URL } });
+  });
+
   // Module routers — each module owns its seam (presentation)
   app.use("/auth", authRouter);
   app.use("/users", userRouter);
