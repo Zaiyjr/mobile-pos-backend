@@ -1,99 +1,64 @@
-import { PrismaClient } from "@prisma/client";
+import "dotenv/config";
 import bcrypt from "bcrypt";
+import { pool } from "../src/config/db.js";
 
-const prisma = new PrismaClient();
+async function upsertRole(name: string) {
+  const { rows } = await pool.query(
+    `INSERT INTO "Role" ("name") VALUES ($1) ON CONFLICT ("name") DO NOTHING RETURNING *`,
+    [name]
+  );
+  if (rows[0]) return rows[0];
+  const { rows: existing } = await pool.query(`SELECT * FROM "Role" WHERE "name" = $1`, [name]);
+  return existing[0];
+}
+
+async function upsertByName(table: string, name: string) {
+  const { rows } = await pool.query(
+    `INSERT INTO "${table}" ("name") VALUES ($1) ON CONFLICT ("name") DO NOTHING RETURNING *`,
+    [name]
+  );
+  if (rows[0]) return rows[0];
+  const { rows: existing } = await pool.query(`SELECT * FROM "${table}" WHERE "name" = $1`, [name]);
+  return existing[0];
+}
 
 async function main() {
-  console.log("🌱 ດຳເນີນການສ້າງ Seed data...");
+  console.log("🌱 ດຳເນີນການສ້າງ Seed data (Supabase pg, no Prisma)...");
 
-  // 1. ສ້າງ Roles ພື້ນຖານ (ADMIN, EMPLOYEE, CASHIER, USER)
-  // ໃຊ້ upsert ເພື່ອປ້ອງກັນການສ້າງຊ້ຳຖ້າມີຂໍ້ມູນຢູ່ແລ້ວ
-  const adminRole = await prisma.role.upsert({
-    where: { name: "ADMIN" },
-    update: {},
-    create: { name: "ADMIN" },
-  });
-
-  const employeeRole = await prisma.role.upsert({
-    where: { name: "EMPLOYEE" },
-    update: {},
-    create: { name: "EMPLOYEE" },
-  });
-
-  const cashierRole = await prisma.role.upsert({
-    where: { name: "CASHIER" },
-    update: {},
-    create: { name: "CASHIER" },
-  });
-
-  await prisma.role.upsert({
-    where: { name: "USER" },
-    update: {},
-    create: { name: "USER" },
-  });
-
+  const adminRole = await upsertRole("ADMIN");
+  await upsertRole("EMPLOYEE");
+  await upsertRole("CASHIER");
+  await upsertRole("USER");
   console.log("✅ ສ້າງ Roles ເສັດສິ້ນ: ADMIN, EMPLOYEE, CASHIER, USER");
 
-  // 2. ສ້າງບັດຊີ ADMIN ຫຼັກ ແລະ ຜູກກັບ adminRole.id
   const adminUsername = "admin";
   const adminPassword = "admin123";
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
 
-  const adminUser = await prisma.user.upsert({
-    where: { username: adminUsername },
-    update: {
-      name: "Super Admin",
-      password: hashedPassword,
-      roleId: adminRole.id, // ຜູກ ID ຈາກ Table Role ທີ່ສ້າງດ້ານເທິງ
-    },
-    create: {
-      username: adminUsername,
-      password: hashedPassword,
-      name: "Super Admin",
-      roleId: adminRole.id,
-    },
-  });
-
+  const { rows: existingAdmin } = await pool.query(`SELECT * FROM "User" WHERE "username" = $1`, [adminUsername]);
+  if (existingAdmin[0]) {
+    await pool.query(`UPDATE "User" SET "name" = $1, "password" = $2, "roleId" = $3, "updatedAt" = NOW() WHERE "username" = $4`, [
+      "Super Admin",
+      hashedPassword,
+      adminRole.id,
+      adminUsername,
+    ]);
+  } else {
+    await pool.query(`INSERT INTO "User" ("username", "password", "name", "roleId", "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,NOW(),NOW())`, [
+      adminUsername,
+      hashedPassword,
+      "Super Admin",
+      adminRole.id,
+    ]);
+  }
   console.log(`✅ ບັງຄັບບັນຊີ Admin ສຳເລັດ: ${adminUsername} / ${adminPassword}`);
 
-  // 3. ສ້າງຂໍ້ມູນ Categories ຕົວຢ່າງ
-  const catSmartphone = await prisma.category.upsert({
-    where: { name: "Smartphone" },
-    update: {},
-    create: { name: "Smartphone" },
-  });
-
-  const catLaptop = await prisma.category.upsert({
-    where: { name: "Laptop" },
-    update: {},
-    create: { name: "Laptop" },
-  });
-
-  // 4. ສ້າງຂໍ້ມູນ Brands ຕົວຢ່າງ
-  const brandApple = await prisma.brand.upsert({
-    where: { name: "Apple" },
-    update: {},
-    create: { name: "Apple" },
-  });
-
-  const brandSamsung = await prisma.brand.upsert({
-    where: { name: "Samsung" },
-    update: {},
-    create: { name: "Samsung" },
-  });
-
-  // 5. Screate ຂໍ້ມູນ Spec Attributes ( RAM, Storage )
-  await prisma.specAttribute.upsert({
-    where: { name: "RAM" },
-    update: {},
-    create: { name: "RAM" },
-  });
-
-  await prisma.specAttribute.upsert({
-    where: { name: "Storage" },
-    update: {},
-    create: { name: "Storage" },
-  });
+  await upsertByName("Category", "Smartphone");
+  await upsertByName("Category", "Laptop");
+  await upsertByName("Brand", "Apple");
+  await upsertByName("Brand", "Samsung");
+  await upsertByName("SpecAttribute", "RAM");
+  await upsertByName("SpecAttribute", "Storage");
 
   console.log("✅ ສ້າງຂໍ້ມູນພື້ນຖານ (Brands, Categories, Specs) ເສັດສິ້ນ");
   console.log("🎉 ທຸກຢ່າງພ້ອມໃຊ້ງານແລ້ວ!");
@@ -105,5 +70,5 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await prisma.$disconnect();
+    await pool.end();
   });

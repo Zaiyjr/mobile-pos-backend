@@ -1,0 +1,14 @@
+import { Router } from "express";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { CustomerRepositoryPg } from "../infrastructure/customer.repository.js";
+import { CustomerService } from "../application/customer.service.js";
+import { CustomerController } from "./customer.controller.js";
+const repo = new CustomerRepositoryPg();
+const service = new CustomerService(repo);
+const controller = new CustomerController(service);
+export const customerRouter = Router();
+customerRouter.post("/", authenticateJWT, controller.create);
+customerRouter.get("/", authenticateJWT, controller.getAll);
+customerRouter.get("/phone/:phone", authenticateJWT, controller.getByPhone);
+customerRouter.put("/points/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.addPoints);
+customerRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);

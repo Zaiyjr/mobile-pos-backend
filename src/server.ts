@@ -1,38 +1,8 @@
 import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import rootRouter from './routes/index.js';
-import { errorHandler } from './middlewares/error.middleware.js';
+import { createApp } from "./shared/presentation/http/app.js";
 
-const app = express();
+const app = createApp();
 const PORT = process.env.PORT || 5000;
-
-// 1. Middlewares
-app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://frontend-eta-jade-32.vercel.app",
-        "https://mobile-pos-frontend-hr6v.vercel.app"
-    ],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization',]
-}));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// 2. Routes
-app.get('/', (req, res) => {
-    res.send("Welcome to Mobile POS API!");
-});
-app.use('/', rootRouter);
-
-// 3. Error Handling
-app.use(errorHandler);
-
-app.use((req, res) => {
-    res.status(404).json({ message: "ບໍ່ພົບເສັ້ນທາງ (Route) ນີ້ໃນລະບົບ!" });
-});
 
 // 4. Start Server (ກວດສອບວ່າ ຖ້າບໍ່ແມ່ນ Vercel ໃຫ້ລັນ listen ປົກກະຕິ)
 if (process.env.NODE_ENV !== 'production') {

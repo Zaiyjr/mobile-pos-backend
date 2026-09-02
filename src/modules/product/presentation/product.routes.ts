@@ -1,0 +1,14 @@
+import { Router } from "express";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { ProductRepositoryPg } from "../infrastructure/product.repository.js";
+import { ProductService } from "../application/product.service.js";
+import { ProductController } from "./product.controller.js";
+const repo = new ProductRepositoryPg();
+const service = new ProductService(repo);
+const controller = new ProductController(service);
+export const productRouter = Router();
+productRouter.get("/", controller.getAll);
+productRouter.get("/:id", controller.getById);
+productRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
+productRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
+productRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);

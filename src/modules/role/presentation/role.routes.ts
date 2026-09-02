@@ -1,0 +1,14 @@
+import { Router } from "express";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { RoleRepositoryPg } from "../infrastructure/role.repository.js";
+import { RoleService } from "../application/role.service.js";
+import { RoleController } from "./role.controller.js";
+const repo = new RoleRepositoryPg();
+const service = new RoleService(repo);
+const controller = new RoleController(service);
+export const roleRouter = Router();
+roleRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
+roleRouter.get("/", authenticateJWT, controller.getAll);
+roleRouter.get("/:id", authenticateJWT, controller.getById);
+roleRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
+roleRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);

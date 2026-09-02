@@ -1,0 +1,10 @@
+import { Router } from "express";
+import { AuthRepositoryPg } from "../infrastructure/auth.repository.js";
+import { AuthService } from "../application/auth.service.js";
+import { AuthController } from "./auth.controller.js";
+const repo = new AuthRepositoryPg();
+const service = new AuthService(repo);
+const controller = new AuthController(service);
+export const authRouter = Router();
+authRouter.post("/register", controller.register);
+authRouter.post("/login", controller.login);

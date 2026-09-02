@@ -1,17 +1,21 @@
+# Local dev not needed — Supabase hosted Postgres is used (see .env DATABASE_URL)
+# This file kept for legacy local MySQL reference. For Supabase local, use Supabase CLI or point DATABASE_URL to pooler.
+# To run a local Postgres mimicking Supabase (optional):
+#  postgres:
+#    image: postgres:15
+#    container_name: supabase-local-db
+#    environment:
+#      POSTGRES_DB: postgres
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#    ports:
+#      - "5432:5432"
+
 services:
-  mysql-db:
-    image: mysql:8.0
-    container_name: mobile-store-db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: mobile_store_db
-      MYSQL_USER: root
-      MYSQL_PASSWORD: root
-    ports:
-      - "3307:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
+  placeholder:
+    image: alpine:latest
+    container_name: supabase-placeholder
+    command: ["sh", "-c", "echo 'Supabase hosted DB in use — see backend/.env' && sleep infinity"]
 
 volumes:
   mysql_data:
