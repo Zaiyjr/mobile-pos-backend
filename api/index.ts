@@ -1,7 +1,10 @@
 import "dotenv/config";
-import express from "express";
 import { createApp } from "../src/shared/presentation/http/app.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-// Vercel serverless entrypoint — must directly import express so Vercel detects it
 const app = createApp();
-export default app;
+
+// Vercel serverless handler — export as default function, not just the app
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  return app(req as any, res as any);
+}
