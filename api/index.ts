@@ -1,6 +1,10 @@
-// MINIMAL TEST — no imports, no DB, no Express
-// If this works → problem is in module imports
-// If this ALSO hangs → problem is Vercel config / network
-export default function handler(req: any, res: any) {
-  res.status(200).json({ ok: true, ts: Date.now(), path: req.url });
+import "dotenv/config";
+import { createApp } from "../src/shared/presentation/http/app.js";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+const app = createApp();
+
+// Vercel serverless handler
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  return app(req as any, res as any);
 }
