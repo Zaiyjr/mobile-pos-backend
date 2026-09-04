@@ -1,5 +1,6 @@
 import "dotenv/config";
 import pg from "pg";
+import { env } from "../../config/env.js";
 
 const { Pool } = pg;
 
@@ -38,7 +39,7 @@ function getPool(): InstanceType<typeof Pool> {
   }
   _pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: env.pgRejectUnauthorized } : false,
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000, // fail fast on Vercel

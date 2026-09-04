@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ConflictError, NotFoundError, UnauthorizedError } from "../../../shared/domain/errors/AppError.js";
+import { env } from "../../../shared/config/env.js";
 import type { AuthRepositoryPort } from "../domain/ports.js";
-
-const JWT_SECRET = process.env.JWT_SECRET || "SUPER_SECRET_KEY_123";
 
 export class AuthService {
   constructor(private readonly repo: AuthRepositoryPort) {}
@@ -24,7 +23,7 @@ export class AuthService {
     if (!user) throw new UnauthorizedError("ຊື່ຜູ້ໃຊ້ຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) throw new UnauthorizedError("ຊື່ຜູ້ໃຊ້ຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
-    const token = jwt.sign({ userId: user.id, username: user.username, role: user.role.name }, JWT_SECRET, { expiresIn: "8h" });
+    const token = jwt.sign({ userId: user.id, username: user.username, role: user.role.name }, env.jwtSecret, { expiresIn: "8h" });
     const { password: _, ...withoutPass } = user as unknown as Record<string, unknown>;
     return { user: withoutPass, token };
   }

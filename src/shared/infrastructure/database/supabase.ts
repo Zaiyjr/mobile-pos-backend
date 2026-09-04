@@ -1,28 +1,32 @@
 import "dotenv/config";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { env } from "../../config/env.js";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+let _supabase: SupabaseClient | null = null;
+let _supabaseAdmin: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    "[supabase] SUPABASE_URL or SUPABASE_ANON_KEY missing. " +
-      "Set them in backend/.env — see .env.example. " +
-      "Project: https://nmhopxhlwpbcjzhzrvxj.supabase.co"
-  );
+/**
+ * Lazy anon client. Throws on first use if SUPABASE_URL / SUPABASE_ANON_KEY
+ * are missing — no hard-coded project URL or placeholder key.
+ */
+export function getSupabase(): SupabaseClient {
+  if (!_supabase) _supabase = createClient(env.supabaseUrl, env.supabaseAnonKey);
+  return _supabase;
 }
 
-export const supabase = createClient(
-  supabaseUrl ?? "https://nmhopxhlwpbcjzhzrvxj.supabase.co",
-  supabaseAnonKey ?? "placeholder-anon-key"
-);
+/**
+ * Lazy service-role client (server-side only). Returns null when the
+ * service-role key is not configured.
+ */
+export function getSupabaseAdmin(): SupabaseClient | null {
+  const key = env.supabaseServiceRoleKey;
+  if (!key) return null;
+  if (!_supabaseAdmin) {
+    _supabaseAdmin = createClient(env.supabaseUrl, key, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _supabaseAdmin;
+}
 
-export const supabaseAdmin =
-  supabaseServiceKey && supabaseUrl
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      })
-    : null;
-
-export default supabase;
+export default getSupabase;

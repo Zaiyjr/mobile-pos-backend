@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { env } from "../../config/env.js";
 
 // Augment Express Request locally to avoid TS6 global-augmentation issues on Vercel
 export interface AuthRequest extends Request {
@@ -10,7 +11,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-const JWT_SECRET = (process.env.JWT_SECRET || "SUPER_SECRET_KEY_123") as string;
+// JWT secret is read fail-fast from env (no insecure fallback).
 
 // 1. Middleware ສຳລັບກວດສອບວ່າ Login ຫຼື ຫາກໍມີ Token ບໍ
 export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -24,7 +25,7 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
             return res.status(401).json({ success: false, message: "ບໍ່ພົບ Token ຫຼັງ Bearer" });
         }
       
-        jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
+        jwt.verify(token, env.jwtSecret, (err: any, decoded: any) => {
             if (err) {
                 return res.status(403).json({ success: false, message: "Token ໝົດອາຍຸ ຫຼື ບໍ່ຖືກຕ້ອງ" });
             }
