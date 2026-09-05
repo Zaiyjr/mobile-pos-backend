@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
+import { TenantContext } from "../../infrastructure/context/tenant-context.js";
 
 // Augment Express Request locally to avoid TS6 global-augmentation issues on Vercel
 export interface AuthRequest extends Request {
@@ -8,6 +9,7 @@ export interface AuthRequest extends Request {
     userId: number;
     username: string;
     role: string;
+    tenantId: number;
   };
 }
 
@@ -30,9 +32,17 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
                 return res.status(403).json({ success: false, message: "Token ໝົດອາຍຸ ຫຼື ບໍ່ຖືກຕ້ອງ" });
             }
 
+            // Multi-tenancy: every authenticated request MUST carry a tenantId.
+            if (typeof decoded?.tenantId !== "number") {
+                return res.status(403).json({ success: false, message: "Token ບໍ່ມີ tenantId (tenant required)" });
+            }
+
             // ຝັງຂໍ້ມູນ User ທີ່ແກະລັດສະໝີໄດ້ ເຂົ້າໄປໃນ req.user
             (req as AuthRequest).user = decoded as AuthRequest["user"];
-            return next();
+
+            // Run the rest of the chain within this tenant's context so every
+            // downstream repository query is scoped to it (see TenantContext).
+            return TenantContext.run(decoded.tenantId as number, () => next());
         });
     } else {
         return res.status(401).json({ success: false, message: "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ (Missing Token)" });
