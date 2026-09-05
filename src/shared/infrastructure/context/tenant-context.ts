@@ -13,24 +13,24 @@ import { AsyncLocalStorage } from "node:async_hooks";
  * request, so a missing scope can never silently return cross-tenant data.
  */
 interface TenantStore {
-  tenantId: number;
+  tenantId: string;
 }
 
 const storage = new AsyncLocalStorage<TenantStore>();
 
 export class TenantContext {
   /** Run `fn` (and everything it awaits) with `tenantId` as the current tenant. */
-  static run<T>(tenantId: number, fn: () => T): T {
+  static run<T>(tenantId: string, fn: () => T): T {
     return storage.run({ tenantId }, fn);
   }
 
   /** Current tenant id, or undefined when outside a tenant request. */
-  static get(): number | undefined {
+  static get(): string | undefined {
     return storage.getStore()?.tenantId;
   }
 
   /** Current tenant id, throwing if there is none (used by repositories). */
-  static getOrThrow(): number {
+  static getOrThrow(): string {
     const id = storage.getStore()?.tenantId;
     if (id === undefined) {
       throw new Error(

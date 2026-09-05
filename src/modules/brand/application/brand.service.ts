@@ -13,15 +13,15 @@ export class BrandService {
   async getAll() {
     return this.repo.findAll();
   }
-  async getById(id: number) {
+  async getById(id: string) {
     const brand = await this.repo.findById(id);
     if (!brand) throw new NotFoundError("ບໍ່ພົບຂໍ້ມູນຍີ່ຫໍ້ນີ້");
     return brand;
   }
-  async update(id: number, data: UpdateBrandInput) {
+  async update(id: string, data: UpdateBrandInput) {
     return this.repo.update(id, data);
   }
-  async delete(id: number) {
+  async delete(id: string) {
     return this.repo.delete(id);
   }
 }

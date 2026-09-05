@@ -22,7 +22,7 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
           for (const sid of item.stockItemIds) {
             await client.query(`INSERT INTO "OrderItemItem" ("orderItemId","stockItemId") VALUES ($1,$2)`, [orderItem.id, sid]);
           }
-          await client.query(`UPDATE "StockItem" SET "status"='SOLD' WHERE "id"=ANY($1::int[])`, [item.stockItemIds]);
+          await client.query(`UPDATE "StockItem" SET "status"='SOLD' WHERE "id"=ANY($1::uuid[])`, [item.stockItemIds]);
         }
         await client.query(`UPDATE "ProductVariant" SET "stockQuantity"="stockQuantity"-$1 WHERE "id"=$2`, [item.quantity, item.variantId]);
       }
@@ -51,7 +51,7 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
     return orders;
   }
 
-  async findById(id: number): Promise<Order | null> {
+  async findById(id: string): Promise<Order | null> {
     const { rows } = await pool.query(
       `SELECT o.*, row_to_json(u) as employee, row_to_json(c) as customer FROM "Order" o LEFT JOIN "User" u ON u."id"=o."employeeId" LEFT JOIN "Customer" c ON c."id"=o."customerId" WHERE o."id"=$1 LIMIT 1`,
       [id]
@@ -71,7 +71,7 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
     return order;
   }
 
-  async cancel(id: number): Promise<Order | null> {
+  async cancel(id: string): Promise<Order | null> {
     const { rows } = await pool.query(`UPDATE "Order" SET "status"='CANCELLED',"updatedAt"=NOW() WHERE "id"=$1 RETURNING *`, [id]);
     return rows[0] ?? null;
   }

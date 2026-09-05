@@ -71,7 +71,7 @@ export class ProductRepositoryPg implements ProductRepositoryPort {
     return products;
   }
 
-  async findById(id: number): Promise<Product | null> {
+  async findById(id: string): Promise<Product | null> {
     const { rows } = await pool.query(
       `SELECT p.*, row_to_json(c) as category, row_to_json(b) as brand FROM "Product" p LEFT JOIN "Category" c ON c."id"=p."categoryId" LEFT JOIN "Brand" b ON b."id"=p."brandId" WHERE p."id"=$1 AND p."isDeleted"=false LIMIT 1`,
       [id]
@@ -91,7 +91,7 @@ export class ProductRepositoryPg implements ProductRepositoryPort {
     return product;
   }
 
-  async update(id: number, data: Record<string, unknown>): Promise<Product | null> {
+  async update(id: string, data: Record<string, unknown>): Promise<Product | null> {
     const allowed = ["name", "description", "categoryId", "brandId"] as const;
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -106,7 +106,7 @@ export class ProductRepositoryPg implements ProductRepositoryPort {
     return this.findById(id);
   }
 
-  async softDelete(id: number): Promise<Product | null> {
+  async softDelete(id: string): Promise<Product | null> {
     const { rows } = await pool.query(`UPDATE "Product" SET "isDeleted"=true,"deletedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$1 RETURNING *`, [id]);
     return rows[0] ?? null;
   }

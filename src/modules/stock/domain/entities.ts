@@ -1,6 +1,6 @@
 export interface StockItem {
-  id: number;
-  variantId: number;
+  id: string;
+  variantId: string;
   serialNumber: string;
   status: string;
 }

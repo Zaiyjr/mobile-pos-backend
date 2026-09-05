@@ -11,13 +11,13 @@ export class CategoryController {
     res.status(200).json({ success: true, data: await this.service.getAll() });
   });
   getOne = asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json({ success: true, data: await this.service.getOne(parseInt(req.params.id as string)) });
+    res.status(200).json({ success: true, data: await this.service.getOne(req.params.id as string) });
   });
   update = asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json({ success: true, data: await this.service.update(parseInt(req.params.id as string), req.body) });
+    res.status(200).json({ success: true, data: await this.service.update(req.params.id as string, req.body) });
   });
   delete = asyncHandler(async (req: Request, res: Response) => {
-    await this.service.delete(parseInt(req.params.id as string));
+    await this.service.delete(req.params.id as string);
     res.status(200).json({ success: true, message: "ລົບໝວດໝູ່ສຳເລັດ" });
   });
 }

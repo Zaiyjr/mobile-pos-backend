@@ -17,11 +17,11 @@ export class CustomerRepositoryPg implements CustomerRepositoryPort {
     const { rows } = await pool.query(`SELECT * FROM "Customer" WHERE "isDeleted"=false ORDER BY "createdAt" DESC`);
     return rows;
   }
-  async updatePoints(id: number, pointsToAdd: number): Promise<Customer> {
+  async updatePoints(id: string, pointsToAdd: number): Promise<Customer> {
     const { rows } = await pool.query(`UPDATE "Customer" SET "points"="points"+$1,"updatedAt"=NOW() WHERE "id"=$2 RETURNING *`, [pointsToAdd, id]);
     return rows[0];
   }
-  async softDelete(id: number): Promise<Customer> {
+  async softDelete(id: string): Promise<Customer> {
     const { rows } = await pool.query(`UPDATE "Customer" SET "isDeleted"=true,"deletedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$1 RETURNING *`, [id]);
     return rows[0];
   }

@@ -10,6 +10,6 @@ export class StockController {
     res.status(200).json({ success: true, data: await this.service.checkIMEI(req.params.serial as string) });
   });
   updateStatus = asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json({ success: true, data: await this.service.updateStatus(parseInt(req.params.id as string), req.body.status) });
+    res.status(200).json({ success: true, data: await this.service.updateStatus(req.params.id as string, req.body.status) });
   });
 }

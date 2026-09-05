@@ -7,10 +7,10 @@ export class RoleService {
     return this.repo.create({ name });
   }
   getAll() { return this.repo.findAll(); }
-  getById(id: number) { return this.repo.findById(id); }
-  async update(id: number, data: { name?: string }) {
+  getById(id: string) { return this.repo.findById(id); }
+  async update(id: string, data: { name?: string }) {
     if (data.name) data.name = data.name.toUpperCase().trim();
     return this.repo.update(id, data);
   }
-  delete(id: number) { return this.repo.delete(id); }
+  delete(id: string) { return this.repo.delete(id); }
 }

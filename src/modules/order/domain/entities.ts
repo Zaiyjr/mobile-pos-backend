@@ -1,15 +1,15 @@
 export interface Order {
-  id: number;
-  employeeId: number;
-  customerId?: number | null;
+  id: string;
+  employeeId: string;
+  customerId?: string | null;
   totalAmount: string;
   status: string;
   createdAt: Date;
   updatedAt: Date;
 }
 export interface CreateOrderDTO {
-  employeeId: number;
-  customerId?: number;
+  employeeId: string;
+  customerId?: string;
   totalAmount: number;
-  items: { variantId: number; quantity: number; priceAtTime: number; stockItemIds: number[] }[];
+  items: { variantId: string; quantity: number; priceAtTime: number; stockItemIds: string[] }[];
 }
