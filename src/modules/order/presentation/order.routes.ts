@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { authenticateJWT } from "../../../shared/presentation/middlewares/auth.js";
 import { OrderRepositoryPg } from "../infrastructure/order.repository.js";
 import { OrderService } from "../application/order.service.js";
 import { OrderController } from "./order.controller.js";
@@ -7,7 +6,7 @@ const repo = new OrderRepositoryPg();
 const service = new OrderService(repo);
 const controller = new OrderController(service);
 export const orderRouter = Router();
-orderRouter.post("/", authenticateJWT, controller.checkout);
-orderRouter.get("/", authenticateJWT, controller.getAll);
-orderRouter.get("/:id", authenticateJWT, controller.getById);
-orderRouter.post("/cancel/:id", authenticateJWT, controller.cancel);
+orderRouter.post("/", controller.checkout);
+orderRouter.get("/", controller.getAll);
+orderRouter.get("/:id", controller.getById);
+orderRouter.post("/cancel/:id", controller.cancel);

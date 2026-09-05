@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
 import { UserRepositoryPg } from "../infrastructure/user.repository.js";
 import { UserService } from "../application/user.service.js";
 import { UserController } from "./user.controller.js";
@@ -7,7 +6,7 @@ const repo = new UserRepositoryPg();
 const service = new UserService(repo);
 const controller = new UserController(service);
 export const userRouter = Router();
-userRouter.get("/", authenticateJWT, authorizeRoles("ADMIN"), controller.getAll);
-userRouter.get("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.getById);
-userRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
-userRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+userRouter.get("/", controller.getAll);
+userRouter.get("/:id", controller.getById);
+userRouter.put("/:id", controller.update);
+userRouter.delete("/:id", controller.delete);

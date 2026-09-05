@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
 import { BrandRepositoryPg } from "../infrastructure/brand.repository.js";
 import { BrandService } from "../application/brand.service.js";
 import { BrandController } from "./brand.controller.js";
@@ -11,6 +11,6 @@ const controller = new BrandController(service);
 export const brandRouter = Router();
 brandRouter.get("/", controller.getAll);
 brandRouter.get("/:id", controller.getById);
-brandRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
-brandRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
-brandRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+brandRouter.post("/", authorizeRoles("ADMIN"), controller.create);
+brandRouter.put("/:id", authorizeRoles("ADMIN"), controller.update);
+brandRouter.delete("/:id", authorizeRoles("ADMIN"), controller.delete);
