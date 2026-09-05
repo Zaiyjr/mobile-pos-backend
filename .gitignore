@@ -10,6 +10,7 @@ api/**/*.js
 api/**/*.d.ts
 api/**/*.map
 src/**/*.js
-src/**/*.d.ts
 src/**/*.map
+# Hand-written .d.ts under src/ are SOURCE and must stay tracked
+# (e.g. shared/domain/types/express.d.ts); compiled declarations emit to dist/.
 *.tsbuildinfo

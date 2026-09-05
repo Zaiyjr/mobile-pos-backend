@@ -14,17 +14,17 @@ export class BrandController {
     res.status(200).json({ success: true, data });
   });
   getById = asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id as string);
+    const id = req.params.id as string;
     const data = await this.service.getById(id);
     res.status(200).json({ success: true, data });
   });
   update = asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id as string);
+    const id = req.params.id as string;
     const data = await this.service.update(id, req.body);
     res.status(200).json({ success: true, message: "ອັບເດດຍີ່ຫໍ້ສຳເລັດ", data });
   });
   delete = asyncHandler(async (req: Request, res: Response) => {
-    await this.service.delete(parseInt(req.params.id as string));
+    await this.service.delete(req.params.id as string);
     res.status(200).json({ success: true, message: "ລົບຍີ່ຫໍ້ສຳເລັດ" });
   });
 }

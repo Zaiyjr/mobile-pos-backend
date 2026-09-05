@@ -10,6 +10,6 @@ export class CustomerService {
     return c;
   }
   getAll() { return this.repo.findAll(); }
-  addPoints(id: number, points: number) { return this.repo.updatePoints(id, points); }
-  delete(id: number) { return this.repo.softDelete(id); }
+  addPoints(id: string, points: number) { return this.repo.updatePoints(id, points); }
+  delete(id: string) { return this.repo.softDelete(id); }
 }

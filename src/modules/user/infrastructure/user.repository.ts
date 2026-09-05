@@ -8,15 +8,15 @@ export class UserRepositoryPg implements UserRepositoryPort {
     );
     return rows;
   }
-  async findById(id: number): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     const { rows } = await pool.query(
       `SELECT u.*, row_to_json(r) as role FROM "User" u LEFT JOIN "Role" r ON r."id"=u."roleId" WHERE u."id"=$1 AND u."isDeleted"=false LIMIT 1`,
       [id]
     );
     return rows[0] ?? null;
   }
-  async update(id: number, data: Record<string, unknown>): Promise<User | null> {
-    const allowed = ["username", "password", "name", "roleId"] as const;
+  async update(id: string, data: Record<string, unknown>): Promise<User | null> {
+    const allowed = ["email", "name", "roleId"] as const;
     const fields: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
@@ -29,7 +29,7 @@ export class UserRepositoryPg implements UserRepositoryPort {
     const { rows: withRole } = await pool.query(`SELECT u.*, row_to_json(r) as role FROM "User" u LEFT JOIN "Role" r ON r."id"=u."roleId" WHERE u."id"=$1`, [id]);
     return withRole[0];
   }
-  async softDelete(id: number): Promise<User | null> {
+  async softDelete(id: string): Promise<User | null> {
     const { rows } = await pool.query(`UPDATE "User" SET "isDeleted"=true,"deletedAt"=NOW(),"updatedAt"=NOW() WHERE "id"=$1 RETURNING *`, [id]);
     return rows[0] ?? null;
   }

@@ -13,10 +13,10 @@ export class CustomerController {
     res.status(200).json({ success: true, data: await this.service.getByPhone(req.params.phone as string) });
   });
   addPoints = asyncHandler(async (req: Request, res: Response) => {
-    res.status(200).json({ success: true, data: await this.service.addPoints(parseInt(req.params.id as string), req.body.points) });
+    res.status(200).json({ success: true, data: await this.service.addPoints(req.params.id as string, req.body.points) });
   });
   delete = asyncHandler(async (req: Request, res: Response) => {
-    await this.service.delete(parseInt(req.params.id as string));
+    await this.service.delete(req.params.id as string);
     res.status(200).json({ success: true, message: "ລົບລູກຄ້າສຳເລັດ" });
   });
 }

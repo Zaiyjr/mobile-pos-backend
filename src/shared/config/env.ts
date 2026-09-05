@@ -52,6 +52,15 @@ class EnvConfig {
     if (!value || value.includes("[YOUR_")) {
       throw new Error("[env] SUPABASE_URL is not set (see .env.example).");
     }
+    let protocol = "";
+    try {
+      protocol = new URL(value).protocol;
+    } catch {
+      throw new Error("[env] SUPABASE_URL is not a valid http(s) URL (see .env.example).");
+    }
+    if (protocol !== "http:" && protocol !== "https:") {
+      throw new Error("[env] SUPABASE_URL must be an http(s) URL (see .env.example).");
+    }
     return value;
   }
 

@@ -2,7 +2,7 @@ import type { Category, CreateCategoryInput, UpdateCategoryInput } from "./entit
 export interface CategoryRepositoryPort {
   create(data: CreateCategoryInput): Promise<Category>;
   findAll(): Promise<Category[]>;
-  findById(id: number): Promise<Category | null>;
-  update(id: number, data: UpdateCategoryInput): Promise<Category | null>;
-  delete(id: number): Promise<Category | null>;
+  findById(id: string): Promise<Category | null>;
+  update(id: string, data: UpdateCategoryInput): Promise<Category | null>;
+  delete(id: string): Promise<Category | null>;
 }

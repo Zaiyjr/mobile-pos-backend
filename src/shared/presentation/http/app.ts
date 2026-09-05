@@ -78,28 +78,32 @@ export function createApp() {
     },
   });
 
-  // Module routers — each module owns its seam (presentation)
-  app.use("/auth", authLimiter, authRouter);
-  app.use("/users", userRouter);
-  app.use("/roles", roleRouter);
-  app.use("/brands", brandRouter);
-  app.use("/categories", categoryRouter);
-  app.use("/customers", customerRouter);
-  app.use("/products", productRouter);
-  app.use("/stocks", stockRouter);
-  app.use("/orders", orderRouter);
+  // Aggregate every module router into one API router. The auth limiter is
+  // applied here so it guards /auth under every mounted prefix. Each mount
+  // gets its own Router instance; the module routers are safely reused.
+  const buildApiRouter = () => {
+    const router = express.Router();
+    router.use("/auth", authLimiter, authRouter);
+    router.use("/users", userRouter);
+    router.use("/roles", roleRouter);
+    router.use("/brands", brandRouter);
+    router.use("/categories", categoryRouter);
+    router.use("/customers", customerRouter);
+    router.use("/products", productRouter);
+    router.use("/stocks", stockRouter);
+    router.use("/orders", orderRouter);
+    return router;
+  };
 
-  // Keep legacy compatibility: old clients using /api prefix
-  app.use("/api/auth", authLimiter, authRouter);
-  app.use("/api/users", userRouter);
-  app.use("/api/roles", roleRouter);
-  app.use("/api/brands", brandRouter);
-  app.use("/api/categories", categoryRouter);
-  app.use("/api/customers", customerRouter);
-  app.use("/api/products", productRouter);
-  app.use("/api/stocks", stockRouter);
-  app.use("/api/orders", orderRouter);
+  // Canonical versioned API — new clients should target /api/v1/*.
+  app.use("/api/v1", buildApiRouter());
 
+  // Legacy prefixes kept for backward compatibility with existing clients
+  // (the Vercel frontends / older app builds). Deprecate once they move to /api/v1.
+  app.use("/api", buildApiRouter());
+  app.use("/", buildApiRouter());
+
+  
   app.use(errorHandler);
   app.use((_req, res) => {
     res.status(404).json({ message: "ບໍ່ພົບເສັ້ນທາງ (Route) ນີ້ໃນລະບົບ!" });

@@ -8,7 +8,7 @@ export class AuthController {
     res.status(201).json({ success: true, message: "ສະໝັກບັນຊີພະນັກງານສຳເລັດ", data });
   });
   login = asyncHandler(async (req: Request, res: Response) => {
-    const { username, password } = req.body;
-    res.status(200).json({ success: true, message: "ເຂົ້າສູ່ລະບົບສຳເລັດ", data: await this.service.login(username, password) });
+    const { email, password } = req.body;
+    res.status(200).json({ success: true, message: "ເຂົ້າສູ່ລະບົບສຳເລັດ", data: await this.service.login(email, password) });
   });
 }

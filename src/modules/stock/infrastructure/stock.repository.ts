@@ -2,7 +2,7 @@ import { pool } from "../../../shared/infrastructure/database/pool.js";
 import type { StockItem } from "../domain/entities.js";
 import type { StockRepositoryPort } from "../domain/ports.js";
 export class StockRepositoryPg implements StockRepositoryPort {
-  async add(data: { variantId: number; serialNumber: string; status?: string }): Promise<StockItem> {
+  async add(data: { variantId: string; serialNumber: string; status?: string }): Promise<StockItem> {
     const { rows } = await pool.query(`INSERT INTO "StockItem" ("variantId","serialNumber","status") VALUES ($1,$2,$3) RETURNING *`, [data.variantId, data.serialNumber, data.status ?? "AVAILABLE"]);
     return rows[0];
   }
@@ -15,7 +15,7 @@ export class StockRepositoryPg implements StockRepositoryPort {
     const r = rows[0];
     return { ...r, variant: r.variant ? { ...r.variant, product: r.product } : null };
   }
-  async updateStatus(id: number, status: string): Promise<StockItem | null> {
+  async updateStatus(id: string, status: string): Promise<StockItem | null> {
     const { rows } = await pool.query(`UPDATE "StockItem" SET "status"=$1 WHERE "id"=$2 RETURNING *`, [status, id]);
     return rows[0] ?? null;
   }

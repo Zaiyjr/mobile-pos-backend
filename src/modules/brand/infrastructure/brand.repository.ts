@@ -11,11 +11,11 @@ export class BrandRepositoryPg implements BrandRepositoryPort {
     const { rows } = await pool.query(`SELECT * FROM "Brand" ORDER BY "id" ASC`);
     return rows;
   }
-  async findById(id: number): Promise<Brand | null> {
+  async findById(id: string): Promise<Brand | null> {
     const { rows } = await pool.query(`SELECT * FROM "Brand" WHERE "id" = $1`, [id]);
     return rows[0] ?? null;
   }
-  async update(id: number, data: UpdateBrandInput): Promise<Brand | null> {
+  async update(id: string, data: UpdateBrandInput): Promise<Brand | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
@@ -28,7 +28,7 @@ export class BrandRepositoryPg implements BrandRepositoryPort {
     const { rows } = await pool.query(`UPDATE "Brand" SET ${fields.join(", ")} WHERE "id" = $${idx} RETURNING *`, values);
     return rows[0] ?? null;
   }
-  async delete(id: number): Promise<Brand | null> {
+  async delete(id: string): Promise<Brand | null> {
     const { rows } = await pool.query(`DELETE FROM "Brand" WHERE "id" = $1 RETURNING *`, [id]);
     return rows[0] ?? null;
   }

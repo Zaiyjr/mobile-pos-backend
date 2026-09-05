@@ -8,10 +8,10 @@ export class OrderService {
     return this.repo.create(data);
   }
   getAll() { return this.repo.findAll(); }
-  async getById(id: number) {
+  async getById(id: string) {
     const o = await this.repo.findById(id);
     if (!o) throw new NotFoundError("ບໍ່ພົບບິນຂາຍນີ້ໃນລະບົບ");
     return o;
   }
-  cancel(id: number) { return this.repo.cancel(id); }
+  cancel(id: string) { return this.repo.cancel(id); }
 }
