@@ -6,14 +6,28 @@ const { Pool } = pg;
 
 const connectionString = process.env.DATABASE_URL;
 
+/** True only for a parseable postgres(ql):// connection string. */
+function isValidPgUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "postgres:" || u.protocol === "postgresql:";
+  } catch {
+    return false;
+  }
+}
+
+// Treat missing, bracketed placeholders, AND any non-postgres-URL value (e.g.
+// the literal "Your Database URL") as "not configured", so we never hand pg a
+// garbage connection string (which crashes with a cryptic "Invalid URL").
 const isPlaceholder =
   !connectionString ||
   connectionString.includes("[YOUR_SUPABASE_DB_PASSWORD]") ||
-  connectionString.includes("[YOUR_");
+  connectionString.includes("[YOUR_") ||
+  !isValidPgUrl(connectionString);
 
 if (isPlaceholder) {
   console.warn(
-    "[db] DATABASE_URL missing or placeholder — pool will be lazy and /health will still work. Set DATABASE_URL in Vercel env."
+    "[db] DATABASE_URL is missing or not a valid postgres connection string — DB queries will fail fast with a clear error; /health still responds. Set a real Supabase DATABASE_URL in .env."
   );
 }
 
@@ -23,19 +37,14 @@ let _pool: InstanceType<typeof Pool> | null = null;
 function getPool(): InstanceType<typeof Pool> {
   if (_pool) return _pool;
   if (isPlaceholder) {
-    // Dummy pool that throws on query but does not hang on construction.
-    // This lets / and /health respond even without DB.
-    console.error("[db] Attempted DB query without DATABASE_URL — returning error");
-    // Create a pool with an invalid connection that fails fast (not hanging DNS)
-    _pool = new Pool({
-      connectionString: "postgresql://invalid:invalid@127.0.0.1:5432/invalid",
-      connectionTimeoutMillis: 2000,
-      idleTimeoutMillis: 2000,
-      max: 1,
-    });
-    // Prevent actual connection attempts from hanging Vercel
-    _pool.on("error", () => {});
-    return _pool;
+    // Fail fast with a clear, actionable error instead of handing pg an
+    // unparseable connection string (which surfaces as a cryptic "Invalid URL").
+    // / and /health never call getPool, so they still respond without a DB.
+    throw new Error(
+      "[db] DATABASE_URL is missing or is not a valid postgres connection string " +
+        "(expected postgresql://…). Set a real Supabase connection string in .env " +
+        "(see .env.example) before calling the database."
+    );
   }
   _pool = new Pool({
     connectionString,
