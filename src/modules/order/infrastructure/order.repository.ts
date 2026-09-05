@@ -1,4 +1,5 @@
 import { pool } from "../../../shared/infrastructure/database/pool.js";
+import { TenantContext } from "../../../shared/infrastructure/context/tenant-context.js";
 import type { CreateOrderDTO, Order } from "../domain/entities.js";
 import type { OrderRepositoryPort } from "../domain/ports.js";
 
@@ -7,24 +8,25 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
+      const tenantId = TenantContext.getOrThrow();
       const { rows: orderRows } = await client.query(
-        `INSERT INTO "Order" ("employeeId","customerId","totalAmount","status","createdAt","updatedAt") VALUES ($1,$2,$3,'PAID',NOW(),NOW()) RETURNING *`,
-        [data.employeeId, data.customerId ?? null, data.totalAmount]
+        `INSERT INTO "Order" ("employeeId","customerId","totalAmount","status","tenantId","createdAt","updatedAt") VALUES ($1,$2,$3,'PAID',$4,NOW(),NOW()) RETURNING *`,
+        [data.employeeId, data.customerId ?? null, data.totalAmount, tenantId]
       );
       const order = orderRows[0];
       for (const item of data.items) {
         const { rows: oiRows } = await client.query(
-          `INSERT INTO "OrderItem" ("orderId","variantId","quantity","priceAtTime") VALUES ($1,$2,$3,$4) RETURNING *`,
-          [order.id, item.variantId, item.quantity, item.priceAtTime]
+          `INSERT INTO "OrderItem" ("orderId","variantId","quantity","priceAtTime","tenantId") VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+          [order.id, item.variantId, item.quantity, item.priceAtTime, tenantId]
         );
         const orderItem = oiRows[0];
         if (item.stockItemIds?.length) {
           for (const sid of item.stockItemIds) {
-            await client.query(`INSERT INTO "OrderItemItem" ("orderItemId","stockItemId") VALUES ($1,$2)`, [orderItem.id, sid]);
+            await client.query(`INSERT INTO "OrderItemItem" ("orderItemId","stockItemId","tenantId") VALUES ($1,$2,$3)`, [orderItem.id, sid, tenantId]);
           }
-          await client.query(`UPDATE "StockItem" SET "status"='SOLD' WHERE "id"=ANY($1::uuid[])`, [item.stockItemIds]);
+          await client.query(`UPDATE "StockItem" SET "status"='SOLD' WHERE "id"=ANY($1::uuid[]) AND "tenantId"=$2`, [item.stockItemIds, tenantId]);
         }
-        await client.query(`UPDATE "ProductVariant" SET "stockQuantity"="stockQuantity"-$1 WHERE "id"=$2`, [item.quantity, item.variantId]);
+        await client.query(`UPDATE "ProductVariant" SET "stockQuantity"="stockQuantity"-$1 WHERE "id"=$2 AND "tenantId"=$3`, [item.quantity, item.variantId, tenantId]);
       }
       await client.query("COMMIT");
       return order;
@@ -37,9 +39,11 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
   }
 
   async findAll(): Promise<Order[]> {
+    const tenantId = TenantContext.getOrThrow();
     const { rows: orders } = await pool.query(
       `SELECT o.*, json_build_object('name',u."name") as employee, CASE WHEN c."id" IS NOT NULL THEN json_build_object('name',c."name",'phone',c."phone") ELSE NULL END as customer
-       FROM "Order" o LEFT JOIN "User" u ON u."id"=o."employeeId" LEFT JOIN "Customer" c ON c."id"=o."customerId" ORDER BY o."createdAt" DESC`
+       FROM "Order" o LEFT JOIN "User" u ON u."id"=o."employeeId" LEFT JOIN "Customer" c ON c."id"=o."customerId" WHERE o."tenantId"=$1 ORDER BY o."createdAt" DESC`,
+      [tenantId]
     );
     for (const o of orders) {
       const { rows: items } = await pool.query(
@@ -53,8 +57,8 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
 
   async findById(id: string): Promise<Order | null> {
     const { rows } = await pool.query(
-      `SELECT o.*, row_to_json(u) as employee, row_to_json(c) as customer FROM "Order" o LEFT JOIN "User" u ON u."id"=o."employeeId" LEFT JOIN "Customer" c ON c."id"=o."customerId" WHERE o."id"=$1 LIMIT 1`,
-      [id]
+      `SELECT o.*, row_to_json(u) as employee, row_to_json(c) as customer FROM "Order" o LEFT JOIN "User" u ON u."id"=o."employeeId" LEFT JOIN "Customer" c ON c."id"=o."customerId" WHERE o."id"=$1 AND o."tenantId"=$2 LIMIT 1`,
+      [id, TenantContext.getOrThrow()]
     );
     const order = rows[0];
     if (!order) return null;
@@ -72,7 +76,7 @@ export class OrderRepositoryPg implements OrderRepositoryPort {
   }
 
   async cancel(id: string): Promise<Order | null> {
-    const { rows } = await pool.query(`UPDATE "Order" SET "status"='CANCELLED',"updatedAt"=NOW() WHERE "id"=$1 RETURNING *`, [id]);
+    const { rows } = await pool.query(`UPDATE "Order" SET "status"='CANCELLED',"updatedAt"=NOW() WHERE "id"=$1 AND "tenantId"=$2 RETURNING *`, [id, TenantContext.getOrThrow()]);
     return rows[0] ?? null;
   }
 }
