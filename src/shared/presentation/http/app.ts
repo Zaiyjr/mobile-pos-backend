@@ -4,7 +4,6 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { errorHandler } from "../middlewares/error.js";
-import { authenticateJWT, authorizeRoles, type AuthRequest } from "../middlewares/auth.js";
 import { authRouter } from "../../../modules/auth/presentation/auth.routes.js";
 import { userRouter } from "../../../modules/user/presentation/user.routes.js";
 import { roleRouter } from "../../../modules/role/presentation/role.routes.js";
@@ -79,27 +78,13 @@ export function createApp() {
     },
   });
 
-  // The ONLY routes reachable without a session (credential bootstrap).
-  // Everything else under the API is private-by-default.
-  const PUBLIC_API_ROUTES: { method: string; path: string }[] = [
-    { method: "POST", path: "/auth/register" },
-    { method: "POST", path: "/auth/login" },
-  ];
-  const isPublicApiRoute = (req: express.Request) =>
-    PUBLIC_API_ROUTES.some((r) => r.method === req.method && r.path === req.path);
-
-  // Aggregate every module router into one API router. Auth is applied ONCE
-  // here (private-by-default) so module routers stay middleware-free; the
-  // auth limiter guards /auth under every mounted prefix. Uniform role policy
-  // is declared at the mount (e.g. /users = ADMIN); mixed routers keep
-  // per-route authorizeRoles for their admin-only writes.
+  // Aggregate every module router into one API router. The auth limiter is
+  // applied here so it guards /auth under every mounted prefix. Each mount
+  // gets its own Router instance; the module routers are safely reused.
   const buildApiRouter = () => {
     const router = express.Router();
-    router.use((req, res, next) =>
-      isPublicApiRoute(req) ? next() : authenticateJWT(req as AuthRequest, res, next)
-    );
     router.use("/auth", authLimiter, authRouter);
-    router.use("/users", authorizeRoles("ADMIN"), userRouter);
+    router.use("/users", userRouter);
     router.use("/roles", roleRouter);
     router.use("/brands", brandRouter);
     router.use("/categories", categoryRouter);
@@ -118,6 +103,7 @@ export function createApp() {
   app.use("/api", buildApiRouter());
   app.use("/", buildApiRouter());
 
+  
   app.use(errorHandler);
   app.use((_req, res) => {
     res.status(404).json({ message: "ບໍ່ພົບເສັ້ນທາງ (Route) ນີ້ໃນລະບົບ!" });

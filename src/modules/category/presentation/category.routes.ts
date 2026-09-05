@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
 import { CategoryRepositoryPg } from "../infrastructure/category.repository.js";
 import { CategoryService } from "../application/category.service.js";
 import { CategoryController } from "./category.controller.js";
@@ -9,6 +9,6 @@ const controller = new CategoryController(service);
 export const categoryRouter = Router();
 categoryRouter.get("/", controller.getAll);
 categoryRouter.get("/:id", controller.getOne);
-categoryRouter.post("/", authorizeRoles("ADMIN"), controller.create);
-categoryRouter.put("/:id", authorizeRoles("ADMIN"), controller.update);
-categoryRouter.delete("/:id", authorizeRoles("ADMIN"), controller.delete);
+categoryRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
+categoryRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
+categoryRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);

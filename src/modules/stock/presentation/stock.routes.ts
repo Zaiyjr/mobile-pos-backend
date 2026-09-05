@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
 import { StockRepositoryPg } from "../infrastructure/stock.repository.js";
 import { StockService } from "../application/stock.service.js";
 import { StockController } from "./stock.controller.js";
@@ -7,6 +7,6 @@ const repo = new StockRepositoryPg();
 const service = new StockService(repo);
 const controller = new StockController(service);
 export const stockRouter = Router();
-stockRouter.post("/add", authorizeRoles("ADMIN"), controller.add);
-stockRouter.get("/check/:serial", controller.check);
-stockRouter.put("/status/:id", authorizeRoles("ADMIN"), controller.updateStatus);
+stockRouter.post("/add", authenticateJWT, authorizeRoles("ADMIN"), controller.add);
+stockRouter.get("/check/:serial", authenticateJWT, controller.check);
+stockRouter.put("/status/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.updateStatus);

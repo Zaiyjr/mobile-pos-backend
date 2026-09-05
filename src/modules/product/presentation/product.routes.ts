@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
+import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
 import { ProductRepositoryPg } from "../infrastructure/product.repository.js";
 import { ProductService } from "../application/product.service.js";
 import { ProductController } from "./product.controller.js";
@@ -9,6 +9,6 @@ const controller = new ProductController(service);
 export const productRouter = Router();
 productRouter.get("/", controller.getAll);
 productRouter.get("/:id", controller.getById);
-productRouter.post("/", authorizeRoles("ADMIN"), controller.create);
-productRouter.put("/:id", authorizeRoles("ADMIN"), controller.update);
-productRouter.delete("/:id", authorizeRoles("ADMIN"), controller.delete);
+productRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
+productRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
+productRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
