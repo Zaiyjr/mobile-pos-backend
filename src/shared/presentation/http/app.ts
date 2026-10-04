@@ -4,18 +4,11 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { env } from "../../config/env.js";
 import { errorHandler } from "../middlewares/error.js";
-import { authRouter } from "../../../modules/auth/presentation/auth.routes.js";
-import { userRouter } from "../../../modules/user/presentation/user.routes.js";
-import { roleRouter } from "../../../modules/role/presentation/role.routes.js";
-import { brandRouter } from "../../../modules/brand/presentation/brand.routes.js";
-import { categoryRouter } from "../../../modules/category/presentation/category.routes.js";
-import { customerRouter } from "../../../modules/customer/presentation/customer.routes.js";
-import { productRouter } from "../../../modules/product/presentation/product.routes.js";
-import { stockRouter } from "../../../modules/stock/presentation/stock.routes.js";
-import { orderRouter } from "../../../modules/order/presentation/order.routes.js";
+import { createModuleRouters } from "../../../modules/create-module-routers.js";
 
 export function createApp() {
   const app = express();
+  const modules = createModuleRouters();
 
   // Behind a reverse proxy (Vercel/Render): trust the first hop so rate
   // limiting and logging see the real client IP instead of the proxy's.
@@ -83,15 +76,15 @@ export function createApp() {
   // gets its own Router instance; the module routers are safely reused.
   const buildApiRouter = () => {
     const router = express.Router();
-    router.use("/auth", authLimiter, authRouter);
-    router.use("/users", userRouter);
-    router.use("/roles", roleRouter);
-    router.use("/brands", brandRouter);
-    router.use("/categories", categoryRouter);
-    router.use("/customers", customerRouter);
-    router.use("/products", productRouter);
-    router.use("/stocks", stockRouter);
-    router.use("/orders", orderRouter);
+    router.use("/auth", authLimiter, modules.auth);
+    router.use("/users", modules.users);
+    router.use("/roles", modules.roles);
+    router.use("/brands", modules.brands);
+    router.use("/categories", modules.categories);
+    router.use("/customers", modules.customers);
+    router.use("/products", modules.products);
+    router.use("/stocks", modules.stocks);
+    router.use("/orders", modules.orders);
     return router;
   };
 

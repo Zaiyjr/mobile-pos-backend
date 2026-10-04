@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
-import { RoleRepositoryPg } from "../infrastructure/role.repository.js";
-import { RoleService } from "../application/role.service.js";
-import { RoleController } from "./role.controller.js";
-const repo = new RoleRepositoryPg();
-const service = new RoleService(repo);
-const controller = new RoleController(service);
-export const roleRouter = Router();
-roleRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
-roleRouter.get("/", authenticateJWT, controller.getAll);
-roleRouter.get("/:id", authenticateJWT, controller.getById);
-roleRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
-roleRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+import { validateBody } from "../../../shared/presentation/middlewares/validate-body.js";
+import { roleSchema } from "../../../shared/presentation/validation/request-schemas.js";
+import type { RoleController } from "./role.controller.js";
+export function createRoleRouter(controller: RoleController) {
+  const router = Router();
+  router.post("/", authenticateJWT, authorizeRoles("ADMIN"), validateBody(roleSchema), controller.create);
+  router.get("/", authenticateJWT, controller.getAll);
+  router.get("/:id", authenticateJWT, controller.getById);
+  router.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), validateBody(roleSchema.partial()), controller.update);
+  router.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+  return router;
+}

@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
-import { ProductRepositoryPg } from "../infrastructure/product.repository.js";
-import { ProductService } from "../application/product.service.js";
-import { ProductController } from "./product.controller.js";
-const repo = new ProductRepositoryPg();
-const service = new ProductService(repo);
-const controller = new ProductController(service);
-export const productRouter = Router();
-productRouter.get("/", controller.getAll);
-productRouter.get("/:id", controller.getById);
-productRouter.post("/", authenticateJWT, authorizeRoles("ADMIN"), controller.create);
-productRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
-productRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+import { validateBody } from "../../../shared/presentation/middlewares/validate-body.js";
+import { productCreateSchema, productUpdateSchema } from "../../../shared/presentation/validation/request-schemas.js";
+import type { ProductController } from "./product.controller.js";
+export function createProductRouter(controller: ProductController) {
+  const router = Router();
+  router.get("/", controller.getAll);
+  router.get("/:id", controller.getById);
+  router.post("/", authenticateJWT, authorizeRoles("ADMIN"), validateBody(productCreateSchema), controller.create);
+  router.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), validateBody(productUpdateSchema), controller.update);
+  router.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+  return router;
+}

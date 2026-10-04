@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { authenticateJWT, authorizeRoles } from "../../../shared/presentation/middlewares/auth.js";
-import { UserRepositoryPg } from "../infrastructure/user.repository.js";
-import { UserService } from "../application/user.service.js";
-import { UserController } from "./user.controller.js";
-const repo = new UserRepositoryPg();
-const service = new UserService(repo);
-const controller = new UserController(service);
-export const userRouter = Router();
-userRouter.get("/", authenticateJWT, authorizeRoles("ADMIN"), controller.getAll);
-userRouter.get("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.getById);
-userRouter.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.update);
-userRouter.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+import { validateBody } from "../../../shared/presentation/middlewares/validate-body.js";
+import { userUpdateSchema } from "../../../shared/presentation/validation/request-schemas.js";
+import type { UserController } from "./user.controller.js";
+export function createUserRouter(controller: UserController) {
+  const router = Router();
+  router.get("/", authenticateJWT, authorizeRoles("ADMIN"), controller.getAll);
+  router.get("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.getById);
+  router.put("/:id", authenticateJWT, authorizeRoles("ADMIN"), validateBody(userUpdateSchema), controller.update);
+  router.delete("/:id", authenticateJWT, authorizeRoles("ADMIN"), controller.delete);
+  return router;
+}

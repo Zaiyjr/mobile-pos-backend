@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { AuthRepositoryPg } from "../infrastructure/auth.repository.js";
-import { AuthService } from "../application/auth.service.js";
-import { AuthController } from "./auth.controller.js";
-const repo = new AuthRepositoryPg();
-const service = new AuthService(repo);
-const controller = new AuthController(service);
-export const authRouter = Router();
-authRouter.post("/register", controller.register);
-authRouter.post("/login", controller.login);
+import { validateBody } from "../../../shared/presentation/middlewares/validate-body.js";
+import { authLoginSchema, authRegisterSchema } from "../../../shared/presentation/validation/request-schemas.js";
+import type { AuthController } from "./auth.controller.js";
+
+export function createAuthRouter(controller: AuthController) {
+  return Router()
+    .post("/register", validateBody(authRegisterSchema), controller.register)
+    .post("/login", validateBody(authLoginSchema), controller.login);
+}

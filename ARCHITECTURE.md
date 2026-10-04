@@ -1,148 +1,53 @@
-# Clean Modular Architecture — Mobile POS Backend
+# Mobile Shop Management System Architecture
 
-> Supabase `pg` (no Prisma) • Modular monolith • Clean Architecture • Deep modules
+The backend is an Express and TypeScript modular monolith. It preserves the mobile-shop domain and the existing HTTP contract while keeping feature policy independent of Express and PostgreSQL adapters.
 
-## Principles (from `codebase-design` skill)
+## Feature layout
 
-- **Module** = interface + implementation (function/class/package/slice). Each feature slice (`auth`, `product`, …) is a Module.
-- **Interface** = everything a caller must know (types + invariants + errors + perf). Kept small.
-- **Implementation** = hidden behind interface. Can have **internal seams** for tests.
-- **Seam** = place where you can alter behaviour without editing in that place.
-- **Adapter** = concrete at a seam (e.g., `BrandRepositoryPg`).
-- **Depth** = leverage per interface unit. Deep = small interface, large hidden behaviour.
-- **Leverage** for callers, **Locality** for maintainers.
-
----
-
-## Structure
-
-```
+```text
 src/
-  server.ts                — thin bootstrap (composition root)
-  shared/                  — cross-cutting kernel (no feature logic)
-    infrastructure/database/
-      pool.ts              — pg Pool (Supabase pooler, SSL)
-      supabase.ts          — @supabase/supabase-js anon/service_role
-    presentation/
-      middlewares/async.ts, auth.ts, error.ts
-      http/app.ts          — createApp(): assembles all module routers
-    domain/
-      errors/AppError.ts   — AppError, NotFound, Conflict, Unauthorized…
-      types/express.d.ts   — Request.user augmentation
-  modules/<feature>/       — one deep module per bounded context
-    domain/
-      entities.ts          — pure types (Brand, Product, Order…)
-      ports.ts             — Repository Port INTERFACE (seam)
-    application/
-      <feature>.service.ts — use-cases, depends ONLY on Port
-    infrastructure/
-      <feature>.repository.ts — Pg Adapter implements Port
-    presentation/
-      <feature>.controller.ts — HTTP adapter, depends on Service
-      <feature>.routes.ts    — wiring + Router (module’s public seam)
-  prisma/
-    seed.ts                — pg-based seeder (no PrismaClient)
-    clear-mock.ts
+  server.ts                         # Runtime entry point
+  modules/
+    create-module-routers.ts        # Application composition root
+    <feature>/
+      domain/                       # Entities and repository ports
+      application/                  # Use cases and business rules
+      infrastructure/               # PostgreSQL and Supabase adapters
+      presentation/                 # Controllers and Express router factories
+  shared/
+    config/                         # Environment configuration
+    domain/                         # Shared errors and types
+    infrastructure/                 # Database and auth clients
+    presentation/                   # HTTP app, middleware and validation
+openapi.yaml                        # API contract
 ```
 
-### 9 Modules
+Features are `auth`, `user`, `role`, `brand`, `category`, `customer`, `product`, `stock`, and `order`. Mobile-shop behavior includes product variants, IMEI stock items, customer lookup, role management, checkout, receipts, and order history.
 
-| Module | Port | Adapter | Service depth |
-|--------|------|---------|---------------|
-| `auth` | `AuthRepositoryPort` | `AuthRepositoryPg` | register (role resolution + hash), login (jwt) |
-| `user` | `UserRepositoryPort` | `UserRepositoryPg` | getAll/getById/update/delete (hash) |
-| `role` | `RoleRepositoryPort` | `RoleRepositoryPg` | CRUD + upper-case invariant |
-| `brand` | `BrandRepositoryPort` | `BrandRepositoryPg` | CRUD + duplicate check |
-| `category` | `CategoryRepositoryPort` | `CategoryRepositoryPg` | CRUD |
-| `customer` | `CustomerRepositoryPort` | `CustomerRepositoryPg` | findByPhone + points increment |
-| `product` | `ProductRepositoryPort` | `ProductRepositoryPg` | nested create (product+images+variants+specs tx), findAll/findById (joins + _count) |
-| `stock` | `StockRepositoryPort` | `StockRepositoryPg` | add/checkIMEI (join variant→product) |
-| `order` | `OrderRepositoryPort` | `OrderRepositoryPg` | create transaction (Order+OrderItem+OrderItemItem+Stock SOLD+decrement), findAll/findById (joins) |
+## Dependency direction
 
-**Seam placement:**
-- `Service → RepositoryPort` is the domain seam. Service is tested against a fake in-memory adapter (internal seam), controller is tested through Service interface. Two adapters (Pg + Fake) = real seam.
-- `Routes` is the module’s public seam. Small: `router.get/post/put/delete` only. Hides all SQL/transaction complexity.
-
-**Deletion test:** Delete `ProductRepositoryPg` — 200 lines of SQL + transaction vanish, not reappear in controllers. Delete `OrderService` — checkout transaction logic vanishes. Modules earn their keep → deep.
-
----
-
-## Dependency Rule
-
-```
+```text
 presentation → application → domain ← infrastructure
 ```
 
-- `presentation` knows `application`
-- `application` knows `domain/ports` (interface)
-- `infrastructure` implements `domain/ports`
-- `domain` knows nothing
-- `shared` never imports `modules`
+- Domain code does not depend on Express, PostgreSQL, Supabase, or another feature's infrastructure.
+- Application services receive repository ports through constructors.
+- Infrastructure adapters implement repository ports.
+- Router factories receive controllers and only define HTTP routes and middleware.
+- `createModuleRouters()` selects concrete adapters and constructs the feature graph when `createApp()` is called. Importing a router module does not create its services or repositories.
 
-Wiring is in `*.routes.ts` (composition root for that module) and `shared/presentation/http/app.ts` (global composition).
+## HTTP contract and validation
 
-```ts
-// modules/brand/presentation/brand.routes.ts (wiring)
-const repo = new BrandRepositoryPg();      // adapter
-const service = new BrandService(repo);     // depends on Port
-const controller = new BrandController(service);
-export const brandRouter = Router() // public seam
-  .get("/", controller.getAll)
-  .post("/", authenticateJWT, controller.create) // ...
-```
-
-Swap `BrandRepositoryPg` with `BrandRepositoryMemory` for tests without touching `BrandService`.
-
----
-
-## Scalability & Maintainability
-
-- **Locality:** Feature change touches 1 folder (`modules/product/...`) not 4 flat folders. Fix product stock count once, fixed everywhere.
-- **Leverage:** `createApp()` exposes 9 routers (small interface) behind which 4700+ lines of SQL/transactions hide.
-- **Testability:** `application` has no Express/pg creation, receives `Port` via constructor → unit test with fake. `asyncHandler` + `AppError` give consistent error surface.
-- **Independent evolution:** Add `discount` module under `modules/discount/...` without touching existing modules. Share `pool.ts` seam, not implementation.
-- **No ORM lock-in:** Direct `pg` with quoted identifiers (`"Brand"`) matches Supabase Postgres. No `prisma generate` in build (`npm run build` → `tsc` only).
-
----
-
-## Supabase (no Prisma)
-
-- `DATABASE_URL` = pooler `postgres.nmhopxhlwpbcjzhzrvxj:%2BJ6v.7dVsrhbn28@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true` (direct `db...supabase.co` ENOTFOUND, verified).
-- `pool.ts` handles SSL, graceful shutdown, `query()` helper.
-- Schema pushed via `migrate diff --script` → `pool.query(sql)` (14 tables, quoted).
-- Seed: `npm run seed` (`tsx prisma/seed.ts` → `pg`, not `PrismaClient`).
-
----
-
-## HTTP Seams
-
-```
-GET  /                  → Welcome
-POST /auth/register, /auth/login
-GET  /users, /roles, /brands, /categories, /customers, /products, /stocks/check/:serial, /orders
-POST /products, /brands, /stocks/add, /orders (checkout)
-... also mounted under /api/* for legacy clients
-```
-
-All via `shared/presentation/http/app.ts:createApp()`.
-
----
+- `/api/v1` is the canonical prefix. `/api` and the root prefix remain mounted for existing clients.
+- JSON response envelopes retain the existing `success`, `message`, and `data` fields. Errors retain `success: false`, `status`, and `message`.
+- Zod schemas validate auth, user updates, catalog, customer, role, stock, and checkout bodies before controllers run. Unknown fields remain accepted where legacy request bodies may include them.
+- `openapi.yaml` documents the routes, request shapes, security, and error envelope.
 
 ## Verification
 
-```bash
-npx tsc --noEmit          # OK
-npm run build             # OK (dist/modules + dist/shared)
-npm run seed              # OK
-curl POST /auth/login     # OK (admin/admin123 → JWT)
-# test-clean.ts via pg repos: brand/category/product/stock/order transaction PASS
+```sh
+npm run build
+npm test
 ```
 
----
-
-## Next deepening opportunities
-
-- Extract `ProductVariant`/`StockItem` invariant (status flow) into domain value object.
-- Introduce `Order` domain service for stock decrement + points, tested past `OrderRepositoryPort` seam.
-- Add `spec` module for `SpecAttribute` to avoid product knowing specs.
-
+Unit tests exercise use cases through fake repository ports. API contract tests exercise validation and the versioned and legacy route prefixes.
