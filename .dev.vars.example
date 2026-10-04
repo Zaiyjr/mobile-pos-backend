@@ -1,0 +1,6 @@
+# Copy to .dev.vars and fill with values from the staging Supabase project.
+# Keep .dev.vars out of Git.
+JWT_SECRET=replace-with-a-long-random-staging-secret
+SUPABASE_URL=https://your-staging-project.supabase.co
+SUPABASE_ANON_KEY=replace-with-staging-anon-key
+SUPABASE_SERVICE_ROLE_KEY=replace-with-staging-service-role-key

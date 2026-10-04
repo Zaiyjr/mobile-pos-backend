@@ -51,10 +51,10 @@ export function createApp() {
 
   // Health — never touches DB, proves Vercel cold start works
   app.get("/health", (_req, res) => {
-    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!process.env.DATABASE_URL } });
+    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!env.databaseUrl } });
   });
   app.get("/api/health", (_req, res) => {
-    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!process.env.DATABASE_URL } });
+    res.json({ success: true, status: "ok", timestamp: new Date().toISOString(), env: { hasDb: !!env.databaseUrl } });
   });
 
   // Stricter limiter for credential endpoints (login/register) to blunt

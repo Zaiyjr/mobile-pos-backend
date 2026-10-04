@@ -44,7 +44,7 @@ export class AuthService {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.session) throw new UnauthorizedError("ອີເມວຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ");
     const profile = await this.repo.findById(data.user.id);
-    if (!profile) throw new UnauthorizedError("ບໍ່ພົບໂປຣໄລ໌ູ້ໃຊ້ໃນລະບົບ");
+    if (!profile) throw new UnauthorizedError("ບໍ່ພົບຜູ້ໃຊ້ໃນລະບົບ");
     return { user: profile, token: data.session.access_token };
   }
 }

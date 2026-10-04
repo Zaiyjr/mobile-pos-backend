@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { env } from "../../config/env.js";
 
 const GENERIC_500 = "ມີບາງຢ່າງຜິດພາດໃນລະບົບ! (Internal server error)";
 
@@ -8,7 +9,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
 
     const status = typeof err.statusCode === "number" ? err.statusCode : 500;
     const isServerError = status >= 500;
-    const isProduction = process.env.NODE_ENV === "production";
+    const isProduction = env.nodeEnv === "production";
 
     // Known 4xx AppErrors carry safe, user-facing messages. For 5xx we never
     // leak internals (SQL text, stack, config) — production gets a generic

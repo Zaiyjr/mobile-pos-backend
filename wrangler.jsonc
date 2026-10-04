@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mobile-pos-api-dev",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "NODE_ENV": "production",
+    "DB_POOL_MAX": "5",
+    "DB_SSL": "false",
+    "CORS_ORIGINS": "https://dev.mobile-pos-frontend.pages.dev"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_STAGING_HYPERDRIVE_ID"
+    }
+  ]
+}

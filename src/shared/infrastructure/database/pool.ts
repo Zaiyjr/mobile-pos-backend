@@ -1,10 +1,7 @@
-import "dotenv/config";
 import pg from "pg";
 import { env } from "../../config/env.js";
 
 const { Pool } = pg;
-
-const connectionString = process.env.DATABASE_URL;
 
 /** True only for a parseable postgres(ql):// connection string. */
 function isValidPgUrl(value: string): boolean {
@@ -19,23 +16,17 @@ function isValidPgUrl(value: string): boolean {
 // Treat missing, bracketed placeholders, AND any non-postgres-URL value (e.g.
 // the literal "Your Database URL") as "not configured", so we never hand pg a
 // garbage connection string (which crashes with a cryptic "Invalid URL").
-const isPlaceholder =
-  !connectionString ||
-  connectionString.includes("[YOUR_SUPABASE_DB_PASSWORD]") ||
-  connectionString.includes("[YOUR_") ||
-  !isValidPgUrl(connectionString);
-
-if (isPlaceholder) {
-  console.warn(
-    "[db] DATABASE_URL is missing or not a valid postgres connection string — DB queries will fail fast with a clear error; /health still responds. Set a real Supabase DATABASE_URL in .env."
-  );
-}
-
 // Lazy pool — do not fail import if env missing. Vercel cold start needs instant response for / .
 let _pool: InstanceType<typeof Pool> | null = null;
 
 function getPool(): InstanceType<typeof Pool> {
   if (_pool) return _pool;
+  const connectionString = env.databaseUrl;
+  const isPlaceholder =
+    !connectionString ||
+    connectionString.includes("[YOUR_SUPABASE_DB_PASSWORD]") ||
+    connectionString.includes("[YOUR_") ||
+    !isValidPgUrl(connectionString);
   if (isPlaceholder) {
     // Fail fast with a clear, actionable error instead of handing pg an
     // unparseable connection string (which surfaces as a cryptic "Invalid URL").
@@ -48,8 +39,8 @@ function getPool(): InstanceType<typeof Pool> {
   }
   _pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: env.pgRejectUnauthorized } : false,
-    max: 10,
+    ssl: env.databaseSslEnabled ? { rejectUnauthorized: env.pgRejectUnauthorized } : false,
+    max: env.databasePoolMax,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000, // fail fast on Vercel
   });
