@@ -11,7 +11,8 @@ interface WorkerBindings {
 }
 
 let appInitialization: Promise<void> | undefined;
-const nodeHandler = httpServerHandler({ port: 3000 });
+let nodeHandler: ReturnType<typeof httpServerHandler> | undefined;
+type NodeHandlerRequest = Parameters<NonNullable<ReturnType<typeof httpServerHandler>["fetch"]>>[0];
 
 function initializeApp(bindings: WorkerBindings): Promise<void> {
   configureRuntimeEnvironment({
@@ -28,6 +29,9 @@ function initializeApp(bindings: WorkerBindings): Promise<void> {
 
   appInitialization ??= import("./src/shared/presentation/http/app.js").then(({ createApp }) => {
     createApp().listen(3000);
+    // Construct the adapter after Express has registered its server on the
+    // virtual port. Creating it before listen can bind it to the wrong server.
+    nodeHandler = httpServerHandler({ port: 3000 });
   });
   return appInitialization;
 }
@@ -39,8 +43,8 @@ export default {
     await initializeApp(bindings);
     // Use Cloudflare's documented Node HTTP server adapter so Express receives
     // the original URL path, method, headers, and body through its Node server.
-    return nodeHandler.fetch!(
-      request as Parameters<NonNullable<typeof nodeHandler.fetch>>[0],
+    return nodeHandler!.fetch!(
+      request as NodeHandlerRequest,
       bindings,
       context,
     );
