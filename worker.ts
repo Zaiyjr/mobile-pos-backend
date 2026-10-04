@@ -12,23 +12,25 @@ interface WorkerBindings {
   CORS_ORIGINS?: string;
 }
 
-// Cloudflare exposes Worker bindings through this runtime module. Configure
-// the application before composing Express so the API uses the staging
-// Hyperdrive connection and the secrets configured for this Worker.
-const bindings = cloudflareEnv as unknown as WorkerBindings;
-configureRuntimeEnvironment({
-  DATABASE_URL: bindings.HYPERDRIVE.connectionString,
-  DB_POOL_MAX: "5",
-  DB_SSL: "false",
-  NODE_ENV: "production",
-  JWT_SECRET: bindings.JWT_SECRET,
-  SUPABASE_URL: bindings.SUPABASE_URL,
-  SUPABASE_ANON_KEY: bindings.SUPABASE_ANON_KEY,
-  SUPABASE_SERVICE_ROLE_KEY: bindings.SUPABASE_SERVICE_ROLE_KEY,
-  CORS_ORIGINS: bindings.CORS_ORIGINS,
+// Hyperdrive's connectionString is an I/O-backed binding. Read it from the
+// request path rather than Worker global scope, where Cloudflare rejects it.
+const app = createApp({
+  configureRequestEnvironment() {
+    const bindings = cloudflareEnv as unknown as WorkerBindings;
+    configureRuntimeEnvironment({
+      DATABASE_URL: bindings.HYPERDRIVE.connectionString,
+      DB_POOL_MAX: "5",
+      DB_SSL: "false",
+      NODE_ENV: "production",
+      JWT_SECRET: bindings.JWT_SECRET,
+      SUPABASE_URL: bindings.SUPABASE_URL,
+      SUPABASE_ANON_KEY: bindings.SUPABASE_ANON_KEY,
+      SUPABASE_SERVICE_ROLE_KEY: bindings.SUPABASE_SERVICE_ROLE_KEY,
+      CORS_ORIGINS: bindings.CORS_ORIGINS,
+    });
+  },
 });
 
-const app = createApp();
 app.listen(3000);
 
 // Export Cloudflare's adapter directly as documented for Express on Workers.

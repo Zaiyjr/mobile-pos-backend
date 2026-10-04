@@ -6,9 +6,28 @@ import { env } from "../../config/env.js";
 import { errorHandler } from "../middlewares/error.js";
 import { createModuleRouters } from "../../../modules/create-module-routers.js";
 
-export function createApp() {
+export interface AppOptions {
+  /**
+   * Apply platform-specific bindings before a request reaches middleware that
+   * reads configuration (CORS, authentication, or database adapters).
+   */
+  configureRequestEnvironment?: () => void;
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = express();
   const modules = createModuleRouters();
+
+  if (options.configureRequestEnvironment) {
+    app.use((_req, _res, next) => {
+      try {
+        options.configureRequestEnvironment?.();
+        next();
+      } catch (error) {
+        next(error);
+      }
+    });
+  }
 
   // Behind a reverse proxy (Vercel/Render): trust the first hop so rate
   // limiting and logging see the real client IP instead of the proxy's.
@@ -20,7 +39,11 @@ export function createApp() {
   // CORS allow-list is configurable via CORS_ORIGINS (see .env.example).
   app.use(
     cors({
-      origin: env.corsOrigins,
+      // Resolve origins per request so Worker bindings are read from the
+      // request handler, not while the Worker module is initialized.
+      origin: (origin, callback) => {
+        callback(null, Boolean(origin && env.corsOrigins.includes(origin)));
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],
