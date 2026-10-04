@@ -105,8 +105,8 @@ paths:
     post:
       tags: [Auth]
       operationId: registerStaff
-      summary: Register a staff account
-      description: Creates a Supabase Auth user and a corresponding application profile. Registration uses the server-side service-role key.
+      summary: Register an account and receive a bearer token
+      description: Creates a Supabase Auth user and a corresponding application profile, then returns an authenticated session. Registration uses the server-side service-role key.
       security: []
       requestBody:
         required: true
@@ -115,10 +115,10 @@ paths:
             schema: { $ref: '#/components/schemas/RegisterRequest' }
       responses:
         '201':
-          description: Staff account created
+          description: Account created and signed in
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '409': { $ref: '#/components/responses/Conflict' }
@@ -799,6 +799,17 @@ components:
         - required: [username]
       additionalProperties: true
     LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [user, token]
+              properties:
+                user: { $ref: '#/components/schemas/UserProfile' }
+                token: { type: string, description: "Present as `Authorization: Bearer <token>` on protected endpoints." }
+    RegisterResponse:
       allOf:
         - $ref: '#/components/schemas/SuccessEnvelope'
         - type: object

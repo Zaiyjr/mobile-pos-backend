@@ -31,7 +31,11 @@ export class AuthService {
     });
     if (error || !created.user) throw new UnauthorizedError(error?.message ?? "ສ້າງບັນຊີ Supabase ບໍ່ສຳເລັດ");
     const tenantId = data.tenantId ?? DEFAULT_TENANT_ID;
-    return this.repo.createUser({ id: created.user.id, email: data.email, name: data.name, roleId, tenantId });
+    await this.repo.createUser({ id: created.user.id, email: data.email, name: data.name, roleId, tenantId });
+
+    // Return the same authenticated session shape as login so a newly
+    // registered client can continue without making a second request.
+    return this.login(data.email, data.password);
   }
 
   /**
