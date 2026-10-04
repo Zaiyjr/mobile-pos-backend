@@ -1,4 +1,4 @@
-import { handleAsNodeRequest } from "cloudflare:node";
+import { httpServerHandler } from "cloudflare:node";
 import { configureRuntimeEnvironment } from "./src/shared/config/env.js";
 
 interface WorkerBindings {
@@ -11,6 +11,7 @@ interface WorkerBindings {
 }
 
 let appInitialization: Promise<void> | undefined;
+const nodeHandler = httpServerHandler({ port: 3000 });
 
 function initializeApp(bindings: WorkerBindings): Promise<void> {
   configureRuntimeEnvironment({
@@ -36,6 +37,12 @@ export default {
     // Hyperdrive connection details are request-scoped runtime bindings. Read
     // them inside the handler, never while the Worker module is initializing.
     await initializeApp(bindings);
-    return handleAsNodeRequest(3000, request, bindings, context);
+    // Use Cloudflare's documented Node HTTP server adapter so Express receives
+    // the original URL path, method, headers, and body through its Node server.
+    return nodeHandler.fetch!(
+      request as Parameters<NonNullable<typeof nodeHandler.fetch>>[0],
+      bindings,
+      context,
+    );
   },
 };
