@@ -1,195 +1,466 @@
 openapi: 3.1.0
 info:
   title: Mobile Shop Management API
-  version: 1.0.0
-  description: >-
-    Express API for the mobile shop management system. Successful responses use
-    {success: true, message?: string, data: any}; errors use the documented
-    error envelope. Existing paths remain available under /api/v1, /api, and
-    the root path for compatibility.
+  version: 1.1.0
+  description: |
+    Complete HTTP contract for the Express mobile-shop management API.
+
+    `/api/v1` is the canonical prefix. Existing clients can use the equivalent
+    `/api` or root prefix for feature routes. For example, product listing is
+    available at `/api/v1/products`, `/api/products`, and `/products`.
+
+    Protected endpoints require a Supabase Auth access token in the
+    `Authorization: Bearer <token>` header. Some write operations are restricted
+    to users with the `ADMIN` role as noted on each operation.
+
+    Responses keep the existing API format. Successful reads and creates return
+    `{success:true,data:...}` with an optional `message`; deletes may return
+    `{success:true,message:...}`. Errors return `{success:false,status?,message}`.
+
+    All routes use the global limit of 300 requests per 15 minutes. Registration
+    and login also use the stricter limit of 20 requests per 15 minutes. Exceeding
+    a limit returns HTTP 429.
+  contact:
+    name: Mobile Shop API maintainers
+  license:
+    name: ISC
 servers:
   - url: /api/v1
-    description: Canonical API prefix
+    description: Canonical, versioned API prefix
   - url: /api
     description: Legacy API prefix
   - url: /
     description: Legacy root prefix
 tags:
+  - name: System
+    description: Service liveness and health checks
   - name: Auth
+    description: Supabase-backed staff registration and sign-in
   - name: Users
+    description: Staff profiles and access roles
   - name: Roles
-  - name: Products
-  - name: Categories
+    description: Application role management
   - name: Brands
+    description: Mobile device brands
+  - name: Categories
+    description: Product categories
   - name: Customers
+    description: Customer records and loyalty points
+  - name: Products
+    description: Products, variants, images, and specifications
   - name: Stock
+    description: Stock intake, IMEI lookup, and stock status
   - name: Orders
+    description: Checkout, sales history, receipts, and cancellation
 security:
   - bearerAuth: []
 paths:
+  /:
+    servers:
+      - url: /
+    get:
+      tags: [System]
+      operationId: getWelcome
+      summary: Check that the API is responding
+      security: []
+      responses:
+        '200':
+          description: Welcome text
+          content:
+            text/html:
+              schema: { type: string }
+
+  /health:
+    servers:
+      - url: /
+    get:
+      tags: [System]
+      operationId: getHealth
+      summary: Check API liveness and database configuration
+      description: Does not query PostgreSQL; `env.hasDb` reports whether a connection is configured.
+      security: []
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+
+  /api/health:
+    servers:
+      - url: /
+    get:
+      tags: [System]
+      operationId: getLegacyHealth
+      summary: Legacy health check
+      security: []
+      responses:
+        '200':
+          description: API is running
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+
   /auth/register:
     post:
       tags: [Auth]
+      operationId: registerStaff
+      summary: Register a staff account
+      description: Creates a Supabase Auth user and a corresponding application profile. Registration uses the server-side service-role key.
       security: []
-      summary: Register a user
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/RegisterRequest' }
       responses:
-        '201': { description: User registered }
-        '400': { $ref: '#/components/responses/ValidationError' }
+        '201':
+          description: Staff account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /auth/login:
     post:
       tags: [Auth]
+      operationId: login
+      summary: Sign in and receive a bearer token
+      description: Accepts `email` or the legacy `username` alias. Returns the application user profile and Supabase access token.
       security: []
-      summary: Sign in and return the access token
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/LoginRequest' }
       responses:
-        '200': { description: Signed in }
-        '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Invalid credentials }
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /users:
     get:
       tags: [Users]
-      summary: List users (ADMIN)
-      responses: { '200': { description: User list } }
+      operationId: listUsers
+      summary: List staff profiles
+      description: Requires the `ADMIN` role. Results are scoped to the authenticated user's tenant.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /users/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Users]
-      summary: Get a user (ADMIN)
-      responses: { '200': { description: User details } }
+      operationId: getUser
+      summary: Get a staff profile
+      description: Requires the `ADMIN` role. Results are scoped to the authenticated user's tenant.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
     put:
       tags: [Users]
-      summary: Update a user (ADMIN)
-      requestBody: { $ref: '#/components/requestBodies/JsonObject' }
-      responses: { '200': { description: User updated } }
+      operationId: updateUser
+      summary: Update a staff profile
+      description: Requires the `ADMIN` role. Passwords are managed by Supabase Auth and cannot be changed here.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UserUpdateRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     delete:
       tags: [Users]
-      summary: Soft-delete a user (ADMIN)
-      responses: { '200': { description: User deleted } }
+      operationId: deleteUser
+      summary: Soft-delete a staff profile
+      description: Requires the `ADMIN` role. The profile is marked deleted instead of physically removed.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /roles:
     get:
       tags: [Roles]
+      operationId: listRoles
       summary: List roles
-      responses: { '200': { description: Role list } }
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [Roles]
-      summary: Create a role (ADMIN)
+      operationId: createRole
+      summary: Create a role
+      description: Requires the `ADMIN` role. Role names are normalized to uppercase.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/NameRequest' }
-      responses: { '201': { description: Role created }, '400': { $ref: '#/components/responses/ValidationError' } }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /roles/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Roles]
+      operationId: getRole
       summary: Get a role
-      responses: { '200': { description: Role details } }
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     put:
       tags: [Roles]
-      summary: Update a role (ADMIN)
-      requestBody: { $ref: '#/components/requestBodies/JsonObject' }
-      responses: { '200': { description: Role updated } }
+      operationId: updateRole
+      summary: Update a role
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamePatchRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     delete:
       tags: [Roles]
-      summary: Delete a role (ADMIN)
-      responses: { '200': { description: Role deleted } }
+      operationId: deleteRole
+      summary: Delete a role
+      description: Requires the `ADMIN` role. This endpoint physically deletes the role record.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /brands:
     get:
       tags: [Brands]
+      operationId: listBrands
       summary: List brands
-      responses: { '200': { description: Brand list } }
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [Brands]
-      summary: Create a brand (ADMIN)
+      operationId: createBrand
+      summary: Create a brand
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/NameRequest' }
-      responses: { '201': { description: Brand created }, '400': { $ref: '#/components/responses/ValidationError' } }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /brands/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Brands]
+      operationId: getBrand
       summary: Get a brand
-      responses: { '200': { description: Brand details } }
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
     put:
       tags: [Brands]
-      summary: Update a brand (ADMIN)
-      requestBody: { $ref: '#/components/requestBodies/JsonObject' }
-      responses: { '200': { description: Brand updated } }
+      operationId: updateBrand
+      summary: Update a brand
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NamePatchRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     delete:
       tags: [Brands]
-      summary: Delete a brand (ADMIN)
-      responses: { '200': { description: Brand deleted } }
+      operationId: deleteBrand
+      summary: Delete a brand
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /categories:
     get:
       tags: [Categories]
+      operationId: listCategories
       summary: List categories
-      responses: { '200': { description: Category list } }
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [Categories]
-      summary: Create a category (ADMIN)
+      operationId: createCategory
+      summary: Create a category
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/NameRequest' }
-      responses: { '201': { description: Category created }, '400': { $ref: '#/components/responses/ValidationError' } }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /categories/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Categories]
+      operationId: getCategory
       summary: Get a category
-      responses: { '200': { description: Category details } }
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '500': { $ref: '#/components/responses/ServerError' }
     put:
       tags: [Categories]
-      summary: Update a category (ADMIN)
-      requestBody: { $ref: '#/components/requestBodies/JsonObject' }
-      responses: { '200': { description: Category updated } }
-    delete:
-      tags: [Categories]
-      summary: Delete a category (ADMIN)
-      responses: { '200': { description: Category deleted } }
-  /customers:
-    get:
-      tags: [Customers]
-      summary: List customers
-      responses: { '200': { description: Customer list } }
-    post:
-      tags: [Customers]
-      summary: Create a customer
+      operationId: updateCategory
+      summary: Update a category
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CustomerRequest' }
-      responses: { '201': { description: Customer created }, '400': { $ref: '#/components/responses/ValidationError' } }
+            schema: { $ref: '#/components/schemas/NamePatchRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [Categories]
+      operationId: deleteCategory
+      summary: Delete a category
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /customers:
+    get:
+      tags: [Customers]
+      operationId: listCustomers
+      summary: List customers
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      tags: [Customers]
+      operationId: createCustomer
+      summary: Create a customer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CustomerCreateRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /customers/phone/{phone}:
     parameters:
       - name: phone
         in: path
         required: true
-        schema: { type: string }
+        description: Customer phone number
+        schema: { type: string, minLength: 1 }
     get:
       tags: [Customers]
-      summary: Find a customer by phone
-      responses: { '200': { description: Customer details } }
+      operationId: getCustomerByPhone
+      summary: Find a customer by phone number
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /customers/points/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     put:
       tags: [Customers]
-      summary: Add customer points (ADMIN)
+      operationId: addCustomerPoints
+      summary: Adjust a customer's loyalty points
+      description: Requires the `ADMIN` role. The points value is an integer and may be negative to account for point deductions.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
@@ -197,80 +468,145 @@ paths:
             schema:
               type: object
               required: [points]
-              properties: { points: { type: integer } }
-      responses: { '200': { description: Points updated }, '400': { $ref: '#/components/responses/ValidationError' } }
+              properties:
+                points: { type: integer }
+              additionalProperties: true
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /customers/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     delete:
       tags: [Customers]
-      summary: Soft-delete a customer (ADMIN)
-      responses: { '200': { description: Customer deleted } }
+      operationId: deleteCustomer
+      summary: Soft-delete a customer
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /products:
     get:
       tags: [Products]
-      summary: List products with category, brand, images, variants and specs
-      responses: { '200': { description: Product list } }
+      operationId: listProducts
+      summary: List products
+      description: Returns products with their category, brand, images, variants, and specifications.
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [Products]
-      summary: Create a product with optional nested images and variants (ADMIN)
+      operationId: createProduct
+      summary: Create a product with optional images and variants
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: '#/components/schemas/ProductCreateRequest' }
-      responses: { '201': { description: Product created }, '400': { $ref: '#/components/responses/ValidationError' } }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /products/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Products]
-      summary: Get a product
-      responses: { '200': { description: Product details } }
+      operationId: getProduct
+      summary: Get a product and its variants
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
     put:
       tags: [Products]
-      summary: Update a product (ADMIN)
+      operationId: updateProduct
+      summary: Update a product
+      description: Requires the `ADMIN` role. Only `name` and `description` are validated by this endpoint.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties: { name: { type: string }, description: { type: string } }
-      responses: { '200': { description: Product updated }, '400': { $ref: '#/components/responses/ValidationError' } }
+            schema: { $ref: '#/components/schemas/ProductUpdateRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     delete:
       tags: [Products]
-      summary: Soft-delete a product (ADMIN)
-      responses: { '200': { description: Product deleted } }
+      operationId: deleteProduct
+      summary: Soft-delete a product
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /stocks/add:
     post:
       tags: [Stock]
-      summary: Add stock by IMEI (ADMIN)
+      operationId: addStockItem
+      summary: Add an IMEI stock item
+      description: Requires the `ADMIN` role. New stock defaults to status `AVAILABLE` if status is omitted.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [variantId, serialNumber]
-              properties:
-                variantId: { type: string }
-                serialNumber: { type: string }
-                status: { type: string }
-      responses: { '201': { description: Stock item created }, '400': { $ref: '#/components/responses/ValidationError' } }
+            schema: { $ref: '#/components/schemas/StockCreateRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /stocks/check/{serial}:
     parameters:
       - name: serial
         in: path
         required: true
-        schema: { type: string }
+        description: IMEI or serial number to check
+        schema: { type: string, minLength: 1 }
     get:
       tags: [Stock]
-      summary: Check an available IMEI
-      responses: { '200': { description: Available stock item }, '404': { description: IMEI not found or already sold } }
+      operationId: checkStockByImei
+      summary: Find an available stock item by IMEI
+      description: Returns the item only while its status is `AVAILABLE`; the response includes its variant and product.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /stocks/status/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     put:
       tags: [Stock]
-      summary: Update stock item status (ADMIN)
+      operationId: updateStockStatus
+      summary: Update a stock item's status
+      description: Requires the `ADMIN` role.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
@@ -278,109 +614,243 @@ paths:
             schema:
               type: object
               required: [status]
-              properties: { status: { type: string } }
-      responses: { '200': { description: Stock status updated }, '400': { $ref: '#/components/responses/ValidationError' } }
+              properties:
+                status: { type: string, minLength: 1, examples: [AVAILABLE, SOLD, RESERVED] }
+              additionalProperties: true
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /orders:
     get:
       tags: [Orders]
+      operationId: listOrders
       summary: List sales orders
-      responses: { '200': { description: Order list } }
+      description: Returns sales history scoped to the authenticated user's tenant.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
     post:
       tags: [Orders]
-      summary: Checkout and create a sale
+      operationId: checkout
+      summary: Submit checkout and create a sale
+      description: The authenticated user becomes the employee when `employeeId` is omitted. `stockItemIds` links serialized stock units to each order item.
+      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/OrderCreateRequest' }
-      responses: { '201': { description: Order created }, '400': { $ref: '#/components/responses/ValidationError' } }
+            schema: { $ref: '#/components/schemas/CheckoutRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/Created' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /orders/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     get:
       tags: [Orders]
-      summary: Get an order with items
-      responses: { '200': { description: Order details } }
+      operationId: getOrder
+      summary: Get a sale with its items
+      description: Used to render a receipt or review sale details.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /orders/cancel/{id}:
     parameters: [{ $ref: '#/components/parameters/id' }]
     post:
       tags: [Orders]
-      summary: Cancel an order
-      responses: { '200': { description: Order cancelled } }
+      operationId: cancelOrder
+      summary: Cancel a sale
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/Success' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: Supabase Auth access token returned by `POST /auth/login`.
   parameters:
     id:
       name: id
       in: path
       required: true
-      schema: { type: string }
-  requestBodies:
-    JsonObject:
-      required: true
-      content:
-        application/json:
-          schema: { type: object, additionalProperties: true }
+      description: Resource identifier
+      schema: { type: string, minLength: 1 }
   responses:
-    ValidationError:
-      description: Request validation failed; the usual error envelope is returned.
+    Success:
+      description: Request completed successfully
       content:
         application/json:
-          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+    Created:
+      description: Resource created successfully
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/SuccessEnvelope' }
+    BadRequest:
+      description: Request validation failed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Unauthorized:
+      description: Missing/invalid credentials, invalid login, or unauthorized request
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Forbidden:
+      description: Token is invalid/expired, or the account lacks the required role or tenant
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource or available IMEI was not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Resource conflicts with an existing record
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    TooManyRequests:
+      description: Rate limit exceeded
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
   schemas:
-    ErrorResponse:
+    SuccessEnvelope:
       type: object
-      required: [success, status, message]
-      properties:
-        success: { type: boolean, enum: [false] }
-        status: { type: integer }
-        message: { type: string }
-    SuccessResponse:
-      type: object
-      required: [success, data]
+      required: [success]
       properties:
         success: { type: boolean, const: true }
         message: { type: string }
         data: {}
-    RegisterRequest:
+      additionalProperties: true
+    ErrorEnvelope:
       type: object
-      required: [password, name]
+      required: [success, message]
       properties:
-        email: { type: string, format: email, description: email or legacy username is required }
-        username: { type: string, description: Legacy alias accepted for email }
-        password: { type: string, minLength: 1 }
-        name: { type: string, minLength: 1 }
-        roleId: { oneOf: [{ type: string }, { type: integer }] }
-        tenantId: { type: string }
+        success: { type: boolean, const: false }
+        status: { type: integer, description: Included by the central error handler; auth middleware errors may omit it. }
+        message: { type: string }
+      additionalProperties: true
+    HealthResponse:
+      type: object
+      required: [success, status, timestamp, env]
+      properties:
+        success: { type: boolean, const: true }
+        status: { type: string, const: ok }
+        timestamp: { type: string, format: date-time }
+        env:
+          type: object
+          required: [hasDb]
+          properties:
+            hasDb: { type: boolean }
     LoginRequest:
       type: object
+      description: Supply either `email` or the legacy `username` field, together with password.
       required: [password]
       properties:
-        email: { type: string, description: email or legacy username is required }
-        username: { type: string, description: Legacy alias accepted for email }
+        email: { type: string, format: email }
+        username: { type: string, minLength: 1, description: Legacy alias for email }
         password: { type: string, minLength: 1 }
+      anyOf:
+        - required: [email]
+        - required: [username]
+      additionalProperties: true
+    RegisterRequest:
+      type: object
+      description: Supply either `email` or the legacy `username` field.
+      required: [password, name]
+      properties:
+        email: { type: string, format: email }
+        username: { type: string, minLength: 1, description: Legacy alias for email }
+        password: { type: string, minLength: 1 }
+        name: { type: string, minLength: 1 }
+        roleId: { $ref: '#/components/schemas/Identifier' }
+        tenantId: { type: string }
+      anyOf:
+        - required: [email]
+        - required: [username]
+      additionalProperties: true
+    LoginResponse:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [user, token]
+              properties:
+                user: { $ref: '#/components/schemas/UserProfile' }
+                token: { type: string, description: "Present as `Authorization: Bearer <token>` on protected endpoints." }
+    Identifier:
+      oneOf:
+        - { type: string }
+        - { type: integer }
     NameRequest:
       type: object
       required: [name]
-      properties: { name: { type: string, minLength: 1 } }
-    CustomerRequest:
+      properties:
+        name: { type: string, minLength: 1 }
+      additionalProperties: true
+    NamePatchRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+      additionalProperties: true
+    UserUpdateRequest:
+      type: object
+      description: Password is not editable through this endpoint.
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        phone: { type: string }
+        role: { type: string, description: Accepted for compatibility; use roleId to change the stored role. }
+        roleId: { $ref: '#/components/schemas/Identifier' }
+        isActive: { type: boolean }
+      additionalProperties: true
+    CustomerCreateRequest:
       type: object
       required: [name, phone]
       properties:
         name: { type: string, minLength: 1 }
         phone: { type: string, minLength: 1 }
         points: { type: integer, minimum: 0 }
+      additionalProperties: true
     ProductCreateRequest:
       type: object
       required: [name, categoryId, brandId]
       properties:
         name: { type: string, minLength: 1 }
         description: { type: string }
-        categoryId: { oneOf: [{ type: string }, { type: integer }] }
-        brandId: { oneOf: [{ type: string }, { type: integer }] }
+        categoryId: { $ref: '#/components/schemas/Identifier' }
+        brandId: { $ref: '#/components/schemas/Identifier' }
         images:
           type: object
           properties:
@@ -389,7 +859,11 @@ components:
               items:
                 type: object
                 required: [imageUrl]
-                properties: { imageUrl: { type: string, format: uri }, isMain: { type: boolean } }
+                properties:
+                  imageUrl: { type: string, format: uri }
+                  isMain: { type: boolean }
+                additionalProperties: true
+          additionalProperties: true
         variants:
           type: object
           properties:
@@ -399,16 +873,38 @@ components:
                 type: object
                 required: [color, price, stockQuantity]
                 properties:
-                  color: { type: string }
+                  color: { type: string, minLength: 1 }
                   sku: { type: string }
                   price: { type: number, minimum: 0 }
                   stockQuantity: { type: integer, minimum: 0 }
-    OrderCreateRequest:
+                additionalProperties: true
+          additionalProperties: true
+      additionalProperties: true
+    ProductUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+      additionalProperties: true
+    StockCreateRequest:
+      type: object
+      required: [variantId, serialNumber]
+      properties:
+        variantId: { $ref: '#/components/schemas/Identifier' }
+        serialNumber: { type: string, minLength: 1, description: IMEI or serial number }
+        status: { type: string, description: Defaults to `AVAILABLE` when omitted. }
+      additionalProperties: true
+    CheckoutRequest:
       type: object
       required: [totalAmount, items]
       properties:
-        employeeId: { type: string }
-        customerId: { oneOf: [{ type: string }, { type: integer }, { type: 'null' }] }
+        employeeId:
+          $ref: '#/components/schemas/Identifier'
+          description: Optional when authenticated; the current user's ID is used.
+        customerId:
+          oneOf:
+            - { $ref: '#/components/schemas/Identifier' }
+            - { type: 'null' }
         totalAmount: { type: number, minimum: 0 }
         items:
           type: array
@@ -417,7 +913,22 @@ components:
             type: object
             required: [variantId, quantity, priceAtTime]
             properties:
-              variantId: { oneOf: [{ type: string }, { type: integer }] }
+              variantId: { $ref: '#/components/schemas/Identifier' }
               quantity: { type: integer, minimum: 1 }
               priceAtTime: { type: number, minimum: 0 }
-              stockItemIds: { type: array, items: { oneOf: [{ type: string }, { type: integer }] } }
+              stockItemIds:
+                type: array
+                default: []
+                items: { $ref: '#/components/schemas/Identifier' }
+            additionalProperties: true
+      additionalProperties: true
+    UserProfile:
+      type: object
+      description: User record returned in auth responses and user endpoints.
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { type: object, additionalProperties: true }
+        tenantId: { type: string }
+      additionalProperties: true

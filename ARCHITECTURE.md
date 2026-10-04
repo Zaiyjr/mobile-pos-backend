@@ -41,7 +41,14 @@ presentation → application → domain ← infrastructure
 - `/api/v1` is the canonical prefix. `/api` and the root prefix remain mounted for existing clients.
 - JSON response envelopes retain the existing `success`, `message`, and `data` fields. Errors retain `success: false`, `status`, and `message`.
 - Zod schemas validate auth, user updates, catalog, customer, role, stock, and checkout bodies before controllers run. Unknown fields remain accepted where legacy request bodies may include them.
-- `openapi.yaml` documents the routes, request shapes, security, and error envelope.
+- [`openapi.yaml`](./openapi.yaml) is the complete OpenAPI 3.1 contract for all 41 HTTP operations, including system health checks, auth, authorization requirements, request fields, and error responses. Feature operations can be called under `/api/v1`, `/api`, or the root prefix; the health routes are documented at their exact paths.
+- Import `openapi.yaml` into Swagger UI, Swagger Editor, Postman, or an OpenAPI client generator to browse and try the endpoints. Authenticate in the tool with the Supabase access token returned from `POST /auth/login`.
+
+### Authentication quick reference
+
+- `POST /auth/login`: send `email` (or legacy `username`) and `password`; read the access token from `data.token`.
+- `POST /auth/register`: send `email` (or legacy `username`), `password`, and `name`; `roleId` and `tenantId` are optional.
+- Protected routes require `Authorization: Bearer <token>`. The `openapi.yaml` marks routes that additionally require the `ADMIN` role.
 
 ## Verification
 
