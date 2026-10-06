@@ -42,8 +42,10 @@ export function createApp(options: AppOptions = {}) {
       // Resolve origins per request so Worker bindings are read from the
       // request handler, not while the Worker module is initialized.
       origin: (origin, callback) => {
+        
         callback(null, Boolean(origin && env.corsOrigins.includes(origin)));
       },
+      
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE"],
       allowedHeaders: ["Content-Type", "Authorization"],

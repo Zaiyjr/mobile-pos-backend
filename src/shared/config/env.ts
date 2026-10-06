@@ -1,7 +1,7 @@
 const DEFAULT_CORS_ORIGINS = [
   "http://localhost:5173",
-  "https://frontend-eta-jade-32.vercel.app",
-  "https://mobile-pos-frontend-hr6v.vercel.app",
+  "https://dev.mobile-pos-frontend.pages.dev",
+
 ];
 
 type RuntimeEnvironment = Readonly<Record<string, string | undefined>>;
